@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package LocalPhotoSync;
+
+enum MSGID
+{
+    ID_None = 0;
+    ID_CSReqDeviceInfo = 100;
+    ID_CSResDeviceInfo = 101;
+}

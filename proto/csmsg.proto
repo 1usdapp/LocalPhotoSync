@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package LocalPhotoSync;
+
+
+message MsgPkg
+{
+    int32 ResultID = 1;     //错误码
+    uint64 SerialID = 2;    //序列号
+    oneof MsgBody
+    {
+        CSReqDeviceInfo CSReqDeviceInfo = 100;
+        CSResDeviceInfo CSResDeviceInfo = 101;
+    }
+}
+
+message CSReqDeviceInfo
+{
+    string DeviceID = 1;    //设备ID
+    string Path = 2;        //保存路径
+}
+
+message CSResDeviceInfo
+{
+    
+}
