@@ -9,9 +9,21 @@ message MsgPkg
     uint64 SerialID = 2;    //序列号
     oneof MsgBody
     {
-        CSReqDeviceInfo CSReqDeviceInfo = 100;
-        CSResDeviceInfo CSResDeviceInfo = 101;
+
+        CSNtyServerInfo CSNtyServerInfo = 50;       //udp 广播服务器消息
+
+        CSReqDeviceInfo CSReqDeviceInfo = 101;
+        CSResDeviceInfo CSResDeviceInfo = 102;
+        
     }
+}
+
+message CSNtyServerInfo
+{
+    uint32 TcpPort = 1;     //tcp port
+    string Name = 2;        //服务器名称
+    string RootPath = 3;    //根目录
+    string OS = 4;          //操作系统
 }
 
 message CSReqDeviceInfo

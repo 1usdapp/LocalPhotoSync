@@ -5,6 +5,7 @@ package LocalPhotoSync;
 enum MSGID
 {
     ID_None = 0;
-    ID_CSReqDeviceInfo = 100;
-    ID_CSResDeviceInfo = 101;
+    ID_CSNtyServerInfo = 50;
+    ID_CSReqDeviceInfo = 101;
+    ID_CSResDeviceInfo = 102;
 }
