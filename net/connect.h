@@ -6,7 +6,7 @@
 #include <list>
 #include <string>
 #include <mutex>
-#include "../common/macros.h"
+#include "common/macros.h"
 
 
 //����

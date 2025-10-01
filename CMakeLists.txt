@@ -37,6 +37,7 @@ target_link_libraries(${exe} PRIVATE
     protobuf
     boost_system
     pthread
+    gflags
 )
 
 # 包含目录

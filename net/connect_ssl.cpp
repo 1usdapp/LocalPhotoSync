@@ -2,7 +2,7 @@
 #include <glog/logging.h>
 #include "../common/common.h"
 #include "../common/msg.h"
-#include <fmt/format.h>
+
 // #include "../proto/proto.h"
 // #include "common/protobuf2json.h"
 using namespace std;

@@ -2,19 +2,19 @@
 #include "../common/common.h"
 #include "../common/msg.h"
 #include "../global.h"
-#include <fmt/format.h>
+
 #include <string>
 #include <glog/logging.h>
-using namespace std;
+
 using namespace google;
 
 CConnect::CConnect(boost::asio::ip::tcp::socket&& _socket) :
-	m_socket(move(_socket)),
+	m_socket(std::move(_socket)),
 	m_need_close(false),
 	m_id(GetID())
 {
-	string m_str_ip = m_socket.remote_endpoint().address().to_string();
-	LINFO << fmt::format("new connect ip:{}	m_id:{}", m_str_ip.data(), m_id);
+	std::string m_str_ip = m_socket.remote_endpoint().address().to_string();
+	LINFO << std::format("new connect ip:{}	m_id:{}", m_str_ip.data(), m_id);
 }
 
 CConnect::CConnect(boost::asio::io_context &ioc) :
@@ -26,18 +26,18 @@ CConnect::CConnect(boost::asio::io_context &ioc) :
 
 CConnect::~CConnect()
 {
-	LINFO << fmt::format("id:{} close", m_id);
+	LINFO << std::format("id:{} close", m_id);
 }
 
 void CConnect::Start()
 {
-	g_network.AddClient(m_id, shared_from_this());
+	g_network.AddClient(m_id, std::shared_from_this());
 	DoRead();
 }
 
 void CConnect::SendData(std::shared_ptr<std::string> pdata)
 {
-	auto self = shared_from_this();
+	auto self = std::shared_from_this();
 
 
 	if (m_list_send.empty())
@@ -63,7 +63,7 @@ void CConnect::Close()
 
 void CConnect::DoRead()
 {
-	auto self = shared_from_this();
+	auto self = std::shared_from_this();
 
 	m_socket.async_read_some(boost::asio::buffer(m_recv_buffer, RECV_BUFF_LEN),
 		bind(&CConnect::ReadCb, self, placeholders::_1, placeholders::_2));
@@ -108,10 +108,10 @@ void CConnect::SendCb(boost::system::error_code er, size_t length)
 
 void CConnect::DoSend()
 {
-	auto self = shared_from_this();
+	auto self = std::shared_from_this();
 
 	boost::asio::async_write(m_socket, boost::asio::buffer(*m_list_send.front()),
-		bind(&CConnect::SendCb , self , placeholders::_1 , placeholders::_2));
+		bind(&CConnect::SendCb , self , std::placeholders::_1 , std::placeholders::_2));
 }
 
 void CConnect::NotifyClose()
@@ -148,7 +148,7 @@ void CConnect::HandlePacket()
 	MsgInfo msg;
 	msg.conid = m_id;
 	msg.head = *phead;
-	msg.pstr = make_shared<string>(m_recv_data.data() + sizeof(MSG_HEAD), phead->length);
+	msg.pstr = std::make_shared<string>(m_recv_data.data() + sizeof(MSG_HEAD), phead->length);
 
 	g_work_mgr.PostMsg(msg);
 

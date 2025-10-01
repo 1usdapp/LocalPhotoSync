@@ -1,17 +1,10 @@
 #include "net_mgr.h"
-#include "../common/macros.h"
-#include "../config.h"
-#include "../global.h"
-#include <fmt/format.h>
+#include "common/macros.h"
+#include "server.h"
 #include <glog/logging.h>
-using namespace std;
-using namespace google;
 
-NetMgr::NetMgr() :
-	m_server(m_ioc,Config::GetInstance().GetPort(), Config::GetInstance().GetHttpPort(), Config::GetInstance().GetSSLEnable())
-{
 
-}
+
 
 void NetMgr::Start()
 {
@@ -19,15 +12,25 @@ void NetMgr::Start()
 
 	try
 	{
-		m_server.Start();
+		for (auto pServer:m_listServer) 
+		{
+			pServer->Start();
+		}
 		m_ioc.run();
 
 		LINFO << "normal end";
 	}
 	catch (const std::exception& e)
 	{
-		LERROR << fmt::format("exception end :{}", e.what());
+		LERROR << std::format("exception end :{}", e.what());
 	}
+}
+
+bool NetMgr::AddListenPort(uint16_t uPort)
+{
+	auto pServer = std::make_shared<CServer>(m_ioc , uPort);
+	m_listServer.push_back(pServer);
+	return true;
 }
 
 void NetMgr::Send(int64_t conid, std::shared_ptr<std::string> pstring)
