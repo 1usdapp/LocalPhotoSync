@@ -1,8 +1,7 @@
-﻿#ifndef WSMACROS_H 
-#define WSMACROS_H
+﻿
 
 
-
+#pragma once
 
 #define WS_FUNC(varType, varName, funName)\
 protected: varType varName;\
@@ -36,5 +35,3 @@ LOG(FATAL) << __FUNCTION__ << "\t"
 
 
 
-
-#endif

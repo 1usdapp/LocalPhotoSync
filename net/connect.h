@@ -1,66 +1,75 @@
 #ifndef CONNECT_H
 #define CONNECT_H
 
-#include <memory>
+#include "macros.h"
 #include <boost/asio.hpp>
 #include <list>
-#include <string>
+#include <memory>
 #include <mutex>
-#include "common/macros.h"
+#include <string>
 
 
-//����
-class CConnect:public std::enable_shared_from_this<CConnect>
+
+
+class CConnect : public std::enable_shared_from_this<CConnect>
 {
 public:
-	CConnect(boost::asio::ip::tcp::socket&& _socket);
-	CConnect(boost::asio::io_context &ioc);
+    class IConEvent
+    {
+    public:
+        virtual int OnConnected(int64_t id, std::shared_ptr<CConnect> pConnect)    = 0;
+        virtual int OnHandlePacket(int64_t id, std::shared_ptr<CConnect> pConnect) = 0;
+        virtual int OnClosed(int64_t id)                                           = 0;
+    };
 
-	virtual ~CConnect();
+    CConnect(boost::asio::ip::tcp::socket&& _socket);
+    CConnect(boost::asio::io_context& ioc);
 
-	virtual void Start();
+    virtual ~CConnect();
 
-	void SendData(std::shared_ptr<std::string> pdata);
+    virtual void Start();
 
-	virtual void Close();
+    virtual void Close();
 
-	void ReadCb(boost::system::error_code er, size_t length);
+    void SendData(std::shared_ptr<std::string> pdata);
 
-	void SendCb(boost::system::error_code er, size_t length);
+    void ReadCb(boost::system::error_code er, size_t length);
+
+    void SendCb(boost::system::error_code er, size_t length);
+
 protected:
-
-	template <typename T>
-	std::shared_ptr<T> shared_from_base()
-	{
-		return std::dynamic_pointer_cast<T>(shared_from_this());
-	}
-
-
-	virtual void DoRead();
-
-	virtual void DoSend();
+    template<typename T>
+    std::shared_ptr<T> shared_from_base()
+    {
+        return std::dynamic_pointer_cast<T>(shared_from_this());
+    }
 
 
+    virtual void DoRead();
 
-	void NotifyClose();
-
-	void HandlePacket();
-
-	char m_recv_buffer[RECV_BUFF_LEN];
-
-	std::string m_recv_data;
-
-	std::list<std::shared_ptr<std::string>> m_list_send;
+    virtual void DoSend();
 
 
-	boost::asio::ip::tcp::socket m_socket;
 
-	bool m_need_close{ false };
-	int m_is_client{ -1 };
+    void NotifyClose();
 
-	int64_t m_id{ 0 };
+    void HandlePacket();
+
+    char m_recv_buffer[RECV_BUFF_LEN];
+
+    std::string m_recv_data;
+
+    std::list<std::shared_ptr<std::string>> m_list_send;
 
 
+    boost::asio::ip::tcp::socket m_socket;
+
+    bool m_need_close{false};
+    int  m_is_client{-1};
+
+    int64_t m_id{0};
+
+    std::shared_ptr<IConEvent> m_pEvent;
 };
 
 

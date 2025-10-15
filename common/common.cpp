@@ -59,10 +59,10 @@ void InitGlog(const char* argv0, int log_level)
 	FLAGS_minloglevel = log_level;
 	FLAGS_stop_logging_if_full_disk = true;
 
-	google::SetLogDestination(google::INFO, fmt::format("/opt/log/info_{}", argv0).data());
-	google::SetLogDestination(google::WARNING, fmt::format("/opt/log/warn_{}", argv0).data());
-	google::SetLogDestination(google::ERROR, fmt::format("/opt/log/error_{}", argv0).data());
-	google::SetLogDestination(google::FATAL, fmt::format("/opt/log/fatal_{}", argv0).data());
+	google::SetLogDestination(google::INFO, std::format("/opt/log/info_{}", argv0).data());
+	google::SetLogDestination(google::WARNING, std::format("/opt/log/warn_{}", argv0).data());
+	google::SetLogDestination(google::ERROR, std::format("/opt/log/error_{}", argv0).data());
+	google::SetLogDestination(google::FATAL, std::format("/opt/log/fatal_{}", argv0).data());
 }
 
 bool IsIP(const std::string & domain)
@@ -132,10 +132,10 @@ std::string Int2Ip(uint32_t ip)
 std::shared_ptr<std::string> PacketMsg(int cmd, const google::protobuf::Message& msg)
 {
 	auto pstring = make_shared<string>();
-	MSG_HEAD head;
-	head.cmd = cmd;
-	head.length = msg.ByteSizeLong();
-	pstring->append((char*)&head, sizeof(MSG_HEAD));
+	PkgHead head;
+	head.CMDID = cmd;
+	head.PackageLen = msg.ByteSizeLong();
+	pstring->append((char*)&head, sizeof(PkgHead));
 	msg.AppendToString(pstring.get());
 	return pstring;
 }

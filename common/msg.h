@@ -6,18 +6,23 @@
 #include <string>
 
 
-struct MSG_HEAD
+
+struct PkgHead
 {
-	int32_t length;			//不包含头长度
-	int32_t cmd;
+    uint16_t PackageLen;
+    uint8_t  HeadLen;
+    uint8_t  Version;
+    uint32_t CMDID;
+    uint64_t Reserve;
+    uint64_t Reserve2;
 };
 
-
+const int kCurHeadLen = 20;
 
 struct MsgInfo 
 {
 	int64_t conid;
-	MSG_HEAD head;
+	PkgHead head;
 	std::shared_ptr<std::string> pstr;
 };
 

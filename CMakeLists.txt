@@ -67,29 +67,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 # 为发布版本设置优化
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -DNDEBUG")
 
-# 检查必要的库是否可用
-include(FindPkgConfig)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(PROTOBUF REQUIRED libprotobuf)
-pkg_check_modules(GLOG REQUIRED glog)
-
-# 检查Boost库
-find_package(Boost REQUIRED COMPONENTS system)
-
-# 检查是否找到Boost
-if(NOT Boost_FOUND)
-    message(FATAL_ERROR "Boost library not found")
-endif()
-
-# 检查是否找到protobuf
-if(NOT PROTOBUF_FOUND)
-    message(FATAL_ERROR "protobuf library not found")
-endif()
-
-# 检查是否找到glog
-if(NOT GLOG_FOUND)
-    message(FATAL_ERROR "glog library not found")
-endif()
 
 # 显示编译信息
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

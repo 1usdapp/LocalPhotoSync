@@ -1,29 +1,35 @@
-#ifndef SERVER_VPS_H
-#define SERVER_VPS_H
+#pragma once
 
+#include <atomic>
 #include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
+
+#include <memory>
+#include <unordered_map>
+#include <vector>
+#include "connect.h"
 
 class CServer
 {
 public:
-    CServer(boost::asio::io_context& ioc, int port);
+    CServer() = default;
+
+    void AddTcp(uint16_t uPort);
 
     void Start();
-
 private:
-    void StartTcp();
+    void DoAddTcp(std::shared_ptr<boost::asio::ip::tcp::acceptor> pAccept,
+                  std::shared_ptr<boost::asio::ip::tcp::socket>   pSocket);
 
-    void StartHttp();
+    int64_t GenID();
 
-    boost::asio::ip::tcp::acceptor m_accept;
-    boost::asio::ip::tcp::socket   m_socket;
+    std::vector<std::shared_ptr<boost::asio::ip::tcp::acceptor>> m_vecAccept;
+    boost::asio::io_context m_ioc;
 
-    boost::asio::io_context& m_ioc;
+    std::unordered_map<int64_t,std::shared_ptr<CConnect>> m_mapConnect;
+    std::atomic<int64_t> m_id;
 };
 
 
 
 
 
-#endif
