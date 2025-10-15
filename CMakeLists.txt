@@ -8,6 +8,9 @@ set(exe syncsvr)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 启用生成compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # 生成proto命令
 execute_process(COMMAND bash gen.sh WORKING_DIRECTORY ./proto)
 

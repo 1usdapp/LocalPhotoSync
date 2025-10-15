@@ -1,11 +1,9 @@
+#include <glog/logging.h>
+#include <string>
 #include "connect.h"
 #include "common.h"
 #include "msg.h"
-
-
-#include <glog/logging.h>
-#include <string>
-
+#include "macros.h"
 
 
 
