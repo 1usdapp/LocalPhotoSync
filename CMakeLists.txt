@@ -9,7 +9,7 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/homebrew")
 
 
 # 查找必要的依赖
-find_package(Boost 1.89.0 REQUIRED COMPONENTS filesystem  )
+find_package(Boost  REQUIRED COMPONENTS filesystem  )
 find_package(Protobuf   REQUIRED )
 find_package(absl CONFIG REQUIRED)
 find_package(SQLite3 REQUIRED)
