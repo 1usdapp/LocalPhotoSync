@@ -11,7 +11,9 @@ set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/homebrew")
 # 查找必要的依赖
 find_package(Boost  REQUIRED COMPONENTS filesystem  )
 find_package(Protobuf   REQUIRED )
-find_package(absl CONFIG REQUIRED)
+if(APPLE)
+    find_package(absl CONFIG REQUIRED)
+endif()
 find_package(SQLite3 REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -45,15 +47,29 @@ add_executable(lps_server
 )
 
 # 链接库
-target_link_libraries(lps_server
-    ${Boost_LIBRARIES}
-    ${Protobuf_LIBRARIES}
-    ${SQLite3_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    absl::check
-    absl::log
-    absl::strings
-)
+if(APPLE)
+    target_link_libraries(lps_server
+        ${Boost_LIBRARIES}
+        ${Protobuf_LIBRARIES}
+        ${SQLite3_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        absl::check
+        absl::log
+        absl::strings
+    )
+else()
+    target_link_libraries(lps_server
+        ${Boost_LIBRARIES}
+        ${Protobuf_LIBRARIES}
+        ${SQLite3_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        # absl::check
+        # absl::log
+        # absl::strings
+    )
+
+endif()
+
 
 # 设置编译选项
 target_compile_options(lps_server PRIVATE -Wall -Wextra)
