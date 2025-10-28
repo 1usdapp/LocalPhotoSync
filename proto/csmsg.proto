@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package LocalPhotoSync;
+
+
+message MsgPkg
+{
+    int32 ResultID = 1;     //错误码
+    uint64 SerialID = 2;    //序列号
+    oneof MsgBody
+    {
+
+        CSNtyServerInfo CSNtyServerInfo = 50;       //udp 广播服务器消息
+
+        CSReqDeviceInfo CSReqDeviceInfo = 101;
+        CSResDeviceInfo CSResDeviceInfo = 102;
+        CSReqSyncPhoto CSReqSyncPhoto = 103;
+        CSResSyncPhoto CSResSyncPhoto = 104;
+    }
+}
+
+message CSNtyServerInfo
+{
+    uint32 TcpPort = 1;     //tcp port
+    string Name = 2;        //服务器名称
+    string RootPath = 3;    //根目录
+    string OS = 4;          //操作系统
+}
+
+message CSReqDeviceInfo
+{
+    string DeviceID = 1;    //设备ID
+    string Path = 2;        //保存路径
+}
+
+message CSResDeviceInfo
+{
+    
+}
+
+message CSReqSyncPhoto
+{
+    string Filename = 1;    //文件名称
+    uint64 Size = 2;        //文件大小
+    uint64 Offset = 3;      //文件偏移
+    uint64 Timestamp = 4;   //文件时间戳
+    bool HasNextPkt = 5;    //是否有下一包
+    bytes Data = 6;         //数据
+    uint32 Crc32 = 7;      //crc32
+}
+
+message CSResSyncPhoto
+{
+
+}

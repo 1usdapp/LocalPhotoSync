@@ -1,0 +1,51 @@
+#ifndef SESSION_HPP
+#define SESSION_HPP
+
+#include "../proto/cmd.h"
+#include "config.hpp"
+#include "crc.hpp"
+#include "sqlite_db.hpp"
+#include <boost/asio.hpp>
+#include <cstdint>
+#include <memory>
+#include <string>
+
+namespace lps {
+class Session : public std::enable_shared_from_this<Session>
+{
+private:
+    boost::asio::ip::tcp::socket socket_;
+    ServerConfig                 config_;
+    SqliteCrcDB                  db_;
+    std::string                  device_id_;
+    std::string                  save_path_;
+    std::string                  full_save_path_;
+    std::vector<uint8_t>         buffer_;
+    std::vector<uint8_t>         head_buffer_;  // 用于存储包头(20字节)
+    PkgHead                      pkg_head_;     // 解析后的包头
+    bool                         device_info_received_;
+
+public:
+    Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config);
+    ~Session();
+
+    void start();
+    void handle_read_head(const boost::system::error_code& error, size_t bytes_transferred);
+    void handle_read_data(const boost::system::error_code& error, size_t bytes_transferred);
+    void send_response(const std::vector<uint8_t>& response_data);
+
+private:
+    void        handle_device_info_request();
+    void        handle_sync_photo_request();
+    void        process_file_data(const std::string& filename, uint64_t offset,
+                                  const std::vector<uint8_t>& data, bool has_next_pkt);
+    bool        create_directories(const std::string& path);
+    std::string get_full_path(const std::string& filename);
+    bool        check_file_crc(const std::string& filename, uint32_t expected_crc);
+    bool        update_file_crc(const std::string& filename, uint32_t crc32);
+    void        send_device_info_response();
+    void        send_sync_photo_response(int32_t result_id);
+};
+}   // namespace lps
+
+#endif   // SESSION_HPP

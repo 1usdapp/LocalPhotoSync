@@ -1,0 +1,6 @@
+{
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "xaver.clang-format",
+    "files.autoSave": "afterDelay",
+    "clang-format.language.apex.enable": true
+}
