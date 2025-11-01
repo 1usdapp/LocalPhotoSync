@@ -4,6 +4,8 @@
 #include "../proto/cmd.h"
 #include "config.hpp"
 #include "crc.hpp"
+#include "../proto/csmsg.pb.h"
+#include "../proto/msgid.pb.h"
 #include "sqlite_db.hpp"
 #include <boost/asio.hpp>
 #include <cstdint>
@@ -35,8 +37,8 @@ public:
     void send_response(const std::vector<uint8_t>& response_data);
 
 private:
-    void        handle_device_info_request();
-    void        handle_sync_photo_request();
+    void        handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo &stMsg);
+    void        handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto &stMsg);
     void        process_file_data(const std::string& filename, uint64_t offset,
                                   const std::vector<uint8_t>& data, bool has_next_pkt);
     bool        create_directories(const std::string& path);

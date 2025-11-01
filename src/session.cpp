@@ -1,6 +1,5 @@
 #include "session.hpp"
 #include "../proto/cmd.h"
-#include "../proto/csmsg.pb.h"
 #include <boost/bind/bind.hpp>
 #include <filesystem>
 #include <fstream>
@@ -101,7 +100,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
             }
             else
             {
-                std::cerr << "Read data error: " << ec.message() << std::endl;
+                std::cout << "Read data error: " << ec.message() << std::endl;
             }
         });
 }
@@ -110,7 +109,7 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
 {
     if (error)
     {
-        std::cerr << "Read data error: " << error.message() << std::endl;
+        std::cout << "Read data error: " << error.message() << std::endl;
         return;
     }
 
@@ -127,11 +126,11 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
         // 根据消息类型处理
         if (msg_pkg.has_csreqdeviceinfo())
         {
-            handle_device_info_request();
+            handle_device_info_request(msg_pkg.csreqdeviceinfo());
         }
         else if (msg_pkg.has_csreqsyncphoto())
         {
-            handle_sync_photo_request();
+            handle_sync_photo_request(msg_pkg.csreqsyncphoto());
         }
         else
         {
@@ -149,16 +148,12 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
     start();
 }
 
-void Session::handle_device_info_request()
+void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& stMsg)
 {
-    LocalPhotoSync::MsgPkg msg_pkg;
-    if (!msg_pkg.ParseFromArray(buffer_.data(), buffer_.size()))
-    {
-        send_device_info_response();
-        return;
-    }
+    std::cout << "handle_device_info_request begin" << std::endl;
 
-    const auto& req = msg_pkg.csreqdeviceinfo();
+
+    const auto& req = stMsg;
     device_id_      = req.deviceid();
     save_path_      = req.path();
 
@@ -189,46 +184,28 @@ void Session::handle_device_info_request()
     send_device_info_response();
 }
 
-void Session::handle_sync_photo_request()
+void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& stMsg)
 {
+    std::cout << "handle_sync_photo_request begin" << std::endl;
     if (!device_info_received_)
     {
+        std::cerr << "handle_sync_photo_request device_info_received_ = false" << std::endl;
         send_sync_photo_response(-1);
         return;
     }
 
-    LocalPhotoSync::MsgPkg msg_pkg;
-    if (!msg_pkg.ParseFromArray(buffer_.data(), buffer_.size()))
-    {
-        send_sync_photo_response(-1);
-        return;
-    }
-
-    const auto& req          = msg_pkg.csreqsyncphoto();
-    std::string filename     = req.filename();
-    uint64_t    offset       = req.offset();
-    uint64_t    size         = req.size();
-    bool        has_next_pkt = req.hasnextpkt();
-    uint32_t    client_crc   = req.crc32();
+    const auto& req      = stMsg;
+    std::string filename = req.filename();
+    uint64_t    offset   = req.offset();
+    // uint64_t    size         = req.size();
+    bool     has_next_pkt = req.hasnextpkt();
+    uint32_t client_crc   = req.crc32();
 
     // 将protobuf bytes转为vector
     std::vector<uint8_t> data(req.data().begin(), req.data().end());
 
-    // 验证分片CRC32
-    if (data.size() > 0)
-    {
-        uint32_t calculated_crc = lps::crc32(data);
-        if (calculated_crc != client_crc)
-        {
-            std::cerr << "CRC mismatch for chunk, expected: " << client_crc
-                      << ", got: " << calculated_crc << std::endl;
-            send_sync_photo_response(-2);
-            return;
-        }
-    }
-
     // 如果是单包且完整文件，检查是否需要写入
-    if (offset == 0 && !has_next_pkt && data.size() == size)
+    if (offset == 0)
     {
         uint32_t existing_crc = 0;
         if (db_.get_file_crc(filename, existing_crc))
@@ -246,6 +223,8 @@ void Session::handle_sync_photo_request()
 
     // 获取完整文件路径
     std::string file_path = get_full_path(filename);
+
+    std::cout << "begin to write File :" << file_path << "  offset:" << offset << std::endl;
 
     try
     {
@@ -292,7 +271,7 @@ void Session::handle_sync_photo_request()
     }
     catch (std::exception& e)
     {
-        std::cerr << "File write exception: " << e.what() << std::endl;
+        std::cout << "File write exception: " << e.what() << std::endl;
         send_sync_photo_response(-4);
     }
 }
@@ -314,7 +293,7 @@ void Session::send_device_info_response()
     head.PackageLen = kCurHeadLen + serialized.size();
     head.HeadLen    = kCurHeadLen;
     head.Version    = 1;
-    head.CMDID      = 0;   // 根据实际协议设置CMDID
+    head.CMDID      = LocalPhotoSync::ID_CSResDeviceInfo;   // 根据实际协议设置CMDID
     head.Reserve    = 0;
     head.Reserve2   = 0;
 
@@ -351,7 +330,7 @@ void Session::send_sync_photo_response(int32_t result_id)
     head.PackageLen = kCurHeadLen + serialized.size();
     head.HeadLen    = kCurHeadLen;
     head.Version    = 1;
-    head.CMDID      = 0;   // 根据实际协议设置CMDID
+    head.CMDID      = LocalPhotoSync::ID_CSResSyncPhoto;   // 根据实际协议设置CMDID
     head.Reserve    = 0;
     head.Reserve2   = 0;
 
@@ -379,7 +358,7 @@ void Session::send_response(const std::vector<uint8_t>& response_data)
                              [self](boost::system::error_code ec, std::size_t /*length*/) {
                                  if (ec)
                                  {
-                                     std::cerr << "Write error: " << ec.message() << std::endl;
+                                     std::cout << "Write error: " << ec.message() << std::endl;
                                  }
                              });
 }

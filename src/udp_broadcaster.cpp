@@ -1,5 +1,7 @@
 #include "udp_broadcaster.hpp"
 #include "framing.hpp"
+#include "../proto/cmd.h"
+#include "../proto/msgid.pb.h"
 #include <boost/bind/bind.hpp>
 #include <iostream>
 
@@ -62,19 +64,33 @@ void UdpBroadcaster::broadcast_server_info()
         std::string serialized_data;
         server_info_msg_->SerializeToString(&serialized_data);
 
-        // 编码长度前缀
-        std::vector<uint8_t> length_prefix = lps::encode_length(serialized_data.size());
+        // 构建包头
+        PkgHead head;
+        head.PackageLen = kCurHeadLen + serialized_data.size();
+        head.HeadLen    = kCurHeadLen;
+        head.Version    = 1;
+        head.CMDID      = LocalPhotoSync::ID_CSNtyServerInfo;   // 根据实际协议设置CMDID
+        head.Reserve    = 0;
+        head.Reserve2   = 0;
+
+        // 编码包头为网络字节序
+        std::vector<uint8_t> head_buffer(kCurHeadLen);
+        if (!encode_pkg_head(head, head_buffer.data(), head_buffer.size()))
+        {
+            std::cerr << "Failed to encode package head" << std::endl;
+            return;
+        }
 
         // 组合完整消息
         std::vector<uint8_t> full_message;
-        full_message.insert(full_message.end(), length_prefix.begin(), length_prefix.end());
+        full_message.insert(full_message.end(), head_buffer.begin(), head_buffer.end());
         full_message.insert(full_message.end(), serialized_data.begin(), serialized_data.end());
 
         // 发送广播
         socket_.send_to(boost::asio::buffer(full_message), broadcast_endpoint_);
 
-        std::cout << "Broadcast server info: " << config_.name << " (TCP:" << config_.tcp_port
-                  << ")" << std::endl;
+        // std::cout << "Broadcast server info: " << config_.name << " (TCP:" << config_.tcp_port
+        //           << ")" << std::endl;
     }
     catch (std::exception& e)
     {

@@ -2,5 +2,8 @@
     "editor.formatOnSave": false,
     "editor.defaultFormatter": "xaver.clang-format",
     "files.autoSave": "afterDelay",
-    "clang-format.language.apex.enable": true
+    "clang-format.language.apex.enable": true,
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    }
 }

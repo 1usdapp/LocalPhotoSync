@@ -21,7 +21,7 @@ struct PkgHead
     uint64_t Reserve2;
 };
 
-const int kCurHeadLen = 20;
+const int kCurHeadLen = 24;
 
 // 网络字节序转换辅助函数
 #ifndef ntohll
@@ -53,7 +53,7 @@ inline uint64_t htonll(uint64_t val)
 // 从网络字节序字节流中解析PkgHead
 inline bool parse_pkg_head(const uint8_t* buffer, size_t len, PkgHead& head)
 {
-    if (buffer == nullptr || len < sizeof(PkgHead))
+    if (buffer == nullptr || len < kCurHeadLen)
     {
         return false;
     }
@@ -98,7 +98,7 @@ inline bool parse_pkg_head(const uint8_t* buffer, size_t len, PkgHead& head)
 // 将PkgHead编码为网络字节序字节流
 inline bool encode_pkg_head(const PkgHead& head, uint8_t* buffer, size_t len)
 {
-    if (buffer == nullptr || len < sizeof(PkgHead))
+    if (buffer == nullptr || len != kCurHeadLen)
     {
         return false;
     }

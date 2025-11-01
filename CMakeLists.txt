@@ -72,4 +72,4 @@ endif()
 
 
 # 设置编译选项
-target_compile_options(lps_server PRIVATE -Wall -Wextra)
+target_compile_options(lps_server PRIVATE -Wall -Wextra -g -ggdb)
