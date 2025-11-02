@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 
 namespace lps {
 Session::Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config)
@@ -156,9 +157,15 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
     const auto& req = stMsg;
     device_id_      = req.deviceid();
     save_path_      = req.path();
+    
+    //remove begin char /
+    while ( !save_path_.empty() && *save_path_.begin() == '/') 
+    {
+        save_path_.erase(save_path_.cbegin());    
+    }
 
     // 构建完整保存路径
-    full_save_path_ = config_.root + "/" + save_path_;
+    full_save_path_ = (std::filesystem::path(config_.root) / save_path_).c_str();
 
     // 创建目录
     if (!create_directories(full_save_path_))
@@ -229,19 +236,30 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
     try
     {
         // 打开文件进行写入
-        std::fstream file;
+        std::shared_ptr<std::fstream> pfile;
+        auto                          it = mapPath2File.find(file_path);
+        if (it != mapPath2File.end())
+        {
+            pfile = it->second;
+        }
+        else
+        {
+            pfile                   = std::make_shared<std::fstream>();
+            mapPath2File[file_path] = pfile;
+        }
+
         if (offset == 0)
         {
             // 新文件或覆盖
-            file.open(file_path, std::ios::binary | std::ios::out | std::ios::trunc);
+            pfile->open(file_path, std::ios::binary | std::ios::out | std::ios::trunc);
         }
         else
         {
             // 追加写入
-            file.open(file_path, std::ios::binary | std::ios::in | std::ios::out);
+            pfile->open(file_path, std::ios::binary | std::ios::in | std::ios::out);
         }
 
-        if (!file.is_open())
+        if (!pfile->is_open())
         {
             std::cerr << "Failed to open file: " << file_path << std::endl;
             send_sync_photo_response(-3);
@@ -249,11 +267,11 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
         }
 
         // 定位到指定偏移
-        file.seekp(offset);
+        pfile->seekp(offset);
 
         // 写入数据
-        file.write(reinterpret_cast<const char*>(data.data()), data.size());
-        file.close();
+        pfile->write(reinterpret_cast<const char*>(data.data()), data.size());
+
 
         // 如果是最后一片，计算整文件CRC并更新数据库
         if (!has_next_pkt)
@@ -265,6 +283,9 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
             }
             std::cout << "File completed: " << filename << ", CRC32: 0x" << std::hex << file_crc
                       << std::dec << std::endl;
+
+            pfile->close();
+            mapPath2File.erase(file_path);
         }
 
         send_sync_photo_response(0);
@@ -379,7 +400,9 @@ bool Session::create_directories(const std::string& path)
 
 std::string Session::get_full_path(const std::string& filename)
 {
-    return full_save_path_ + "/" + filename;
+    std::filesystem::path p(full_save_path_);
+    p /= filename;
+    return p.c_str();
 }
 
 bool Session::check_file_crc(const std::string& filename, uint32_t expected_crc)

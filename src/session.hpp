@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace lps {
 class Session : public std::enable_shared_from_this<Session>
@@ -26,6 +27,7 @@ private:
     std::vector<uint8_t>         head_buffer_;  // 用于存储包头(20字节)
     PkgHead                      pkg_head_;     // 解析后的包头
     bool                         device_info_received_;
+    std::unordered_map<std::string,std::shared_ptr<std::fstream>> mapPath2File;
 
 public:
     Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config);
