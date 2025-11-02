@@ -49,6 +49,8 @@ private:
     bool        update_file_crc(const std::string& filename, uint32_t crc32);
     void        send_device_info_response();
     void        send_sync_photo_response(int32_t result_id);
+
+    std::shared_ptr<std::fstream> make_or_get_file_handle(const std::string& file_path , bool new_file );
 };
 }   // namespace lps
 

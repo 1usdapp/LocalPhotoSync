@@ -157,11 +157,11 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
     const auto& req = stMsg;
     device_id_      = req.deviceid();
     save_path_      = req.path();
-    
-    //remove begin char /
-    while ( !save_path_.empty() && *save_path_.begin() == '/') 
+
+    // remove begin char /
+    while (!save_path_.empty() && *save_path_.begin() == '/')
     {
-        save_path_.erase(save_path_.cbegin());    
+        save_path_.erase(save_path_.cbegin());
     }
 
     // 构建完整保存路径
@@ -211,11 +211,14 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
     // 将protobuf bytes转为vector
     std::vector<uint8_t> data(req.data().begin(), req.data().end());
 
+    // 获取完整文件路径
+    std::string file_path = get_full_path(filename);
+
     // 如果是单包且完整文件，检查是否需要写入
     if (offset == 0)
     {
         uint32_t existing_crc = 0;
-        if (db_.get_file_crc(filename, existing_crc))
+        if (db_.get_file_crc(filename, existing_crc) && std::filesystem::exists(file_path))
         {
             if (existing_crc == client_crc)
             {
@@ -228,36 +231,14 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
         }
     }
 
-    // 获取完整文件路径
-    std::string file_path = get_full_path(filename);
+
 
     std::cout << "begin to write File :" << file_path << "  offset:" << offset << std::endl;
 
     try
     {
         // 打开文件进行写入
-        std::shared_ptr<std::fstream> pfile;
-        auto                          it = mapPath2File.find(file_path);
-        if (it != mapPath2File.end())
-        {
-            pfile = it->second;
-        }
-        else
-        {
-            pfile                   = std::make_shared<std::fstream>();
-            mapPath2File[file_path] = pfile;
-        }
-
-        if (offset == 0)
-        {
-            // 新文件或覆盖
-            pfile->open(file_path, std::ios::binary | std::ios::out | std::ios::trunc);
-        }
-        else
-        {
-            // 追加写入
-            pfile->open(file_path, std::ios::binary | std::ios::in | std::ios::out);
-        }
+        std::shared_ptr<std::fstream> pfile = make_or_get_file_handle(file_path, offset == 0);
 
         if (!pfile->is_open())
         {
@@ -414,5 +395,33 @@ bool Session::check_file_crc(const std::string& filename, uint32_t expected_crc)
 bool Session::update_file_crc(const std::string& filename, uint32_t crc32)
 {
     return db_.set_file_crc(filename, crc32);
+}
+
+std::shared_ptr<std::fstream> Session::make_or_get_file_handle(const std::string& file_path,
+                                                               bool               new_file)
+{
+    // 打开文件进行写入
+    std::shared_ptr<std::fstream> pfile;
+    auto                          it = mapPath2File.find(file_path);
+    if (it != mapPath2File.end())
+    {
+        pfile = it->second;
+    }
+    else
+    {
+        pfile                   = std::make_shared<std::fstream>();
+        mapPath2File[file_path] = pfile;
+        if (new_file)
+        {
+            // 新文件或覆盖
+            pfile->open(file_path, std::ios::binary | std::ios::out | std::ios::trunc);
+        }
+        else
+        {
+            // 追加写入
+            pfile->open(file_path, std::ios::binary | std::ios::in | std::ios::out);
+        }
+    }
+    return pfile;
 }
 }   // namespace lps
