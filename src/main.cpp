@@ -28,6 +28,15 @@ int main()
         // 启动TCP服务器
         tcp_server.start_accept();
 
+        // Capture SIGINT and SIGTERM to perform a clean shutdown
+        boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
+        signals.async_wait([&](const boost::system::error_code& , int) {
+            // Stop the `io_context`. This will cause `run()`
+            // to return immediately, eventually destroying the
+            // `io_context` and all of the sockets in it.
+            io_context.stop();
+        });
+
         // 运行io_context
         io_context.run();
     }
