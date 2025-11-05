@@ -46,10 +46,17 @@ message CSReqSyncPhoto
     uint64 Timestamp = 4;   //文件时间戳
     bool HasNextPkt = 5;    //是否有下一包
     bytes Data = 6;         //数据
-    uint32 Crc32 = 7;      //crc32
+    uint32 Crc32 = 7;       //crc32
+    SyncInfo SyncInfo = 8 ; //传送信息
 }
 
 message CSResSyncPhoto
 {
 
+}
+
+message SyncInfo
+{
+    uint32 PhotoNum = 1;    //传送的总数量
+    uint32 CurNum = 2;      //当前传送的照片数量
 }
