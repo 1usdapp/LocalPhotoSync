@@ -17,7 +17,7 @@ private:
 public:
     TcpServer(boost::asio::io_context& io_context, const ServerConfig& config);
     void start_accept();
-    void handle_accept(std::shared_ptr<Session> session, const boost::system::error_code& error);
+
 
 private:
     void do_accept();

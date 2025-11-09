@@ -41,6 +41,8 @@ add_executable(lps_server
     src/sqlite_db.cpp
     src/session.cpp
     src/tcp_server.cpp
+    src/http_server.cpp
+    src/http_session.cpp
     src/udp_broadcaster.cpp
     ${PROTO_SRCS}
     ${PROTO_HDRS}

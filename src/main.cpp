@@ -1,5 +1,7 @@
 #include "config.hpp"
 #include "crc.hpp"
+#include "http_server.hpp"
+#include "http_session.hpp"
 #include "tcp_server.hpp"
 #include "udp_broadcaster.hpp"
 #include <boost/asio.hpp>
@@ -22,15 +24,21 @@ int main()
         // 创建UDP广播器
         lps::UdpBroadcaster udp_broadcaster(io_context, config);
 
+        // 创建http 服务器
+        lps::HttpServer http_server(io_context, config);
+
         // 启动UDP广播
         udp_broadcaster.start_broadcast();
 
         // 启动TCP服务器
         tcp_server.start_accept();
 
+        // 启动http server
+        http_server.start_accept();
+
         // Capture SIGINT and SIGTERM to perform a clean shutdown
         boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
-        signals.async_wait([&](const boost::system::error_code& , int) {
+        signals.async_wait([&](const boost::system::error_code&, int) {
             // Stop the `io_context`. This will cause `run()`
             // to return immediately, eventually destroying the
             // `io_context` and all of the sockets in it.
