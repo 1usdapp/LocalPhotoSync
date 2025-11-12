@@ -61,6 +61,11 @@ if(APPLE)
         absl::check
         absl::log
         absl::strings
+        absl::status
+        absl::strings
+        absl::str_format
+        absl::base
+        absl::time
     )
 else()
     target_link_libraries(lps_server
