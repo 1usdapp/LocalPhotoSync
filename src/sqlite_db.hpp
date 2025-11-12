@@ -9,7 +9,7 @@ namespace lps {
 class SqliteCrcDB
 {
 private:
-    sqlite3*    db_;
+    sqlite3* db_;
     std::string db_path_;
 
 public:

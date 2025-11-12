@@ -54,7 +54,7 @@ uint32_t crc32_file(const std::string& filename)
     }
 
     std::vector<uint8_t> buffer(4096);
-    uint32_t             crc = 0xFFFFFFFF;
+    uint32_t crc = 0xFFFFFFFF;
 
     while (file.read(reinterpret_cast<char*>(buffer.data()), buffer.size()) || file.gcount() > 0)
     {

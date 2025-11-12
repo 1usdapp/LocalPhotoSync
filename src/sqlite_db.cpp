@@ -39,7 +39,7 @@ bool SqliteCrcDB::get_file_crc(const std::string& filename, uint32_t& crc32)
         return false;
 
     sqlite3_stmt* stmt;
-    std::string   sql = "SELECT crc32 FROM photos WHERE filename = ?";
+    std::string sql = "SELECT crc32 FROM photos WHERE filename = ?";
 
     int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
@@ -67,7 +67,7 @@ bool SqliteCrcDB::set_file_crc(const std::string& filename, uint32_t crc32)
         return false;
 
     sqlite3_stmt* stmt;
-    std::string   sql = "INSERT OR REPLACE INTO photos (filename, crc32) VALUES (?, ?)";
+    std::string sql = "INSERT OR REPLACE INTO photos (filename, crc32) VALUES (?, ?)";
 
     int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
@@ -90,7 +90,7 @@ bool SqliteCrcDB::delete_file(const std::string& filename)
         return false;
 
     sqlite3_stmt* stmt;
-    std::string   sql = "DELETE FROM photos WHERE filename = ?";
+    std::string sql = "DELETE FROM photos WHERE filename = ?";
 
     int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
     if (rc != SQLITE_OK)
@@ -116,7 +116,7 @@ bool SqliteCrcDB::create_table()
                       "crc32 INTEGER)";
 
     char* err_msg = nullptr;
-    int   rc      = sqlite3_exec(db_, sql, nullptr, nullptr, &err_msg);
+    int rc = sqlite3_exec(db_, sql, nullptr, nullptr, &err_msg);
     if (rc != SQLITE_OK)
     {
         std::cerr << "SQL error: " << err_msg << std::endl;

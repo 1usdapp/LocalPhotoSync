@@ -1,10 +1,15 @@
 #include "http_session.hpp"
+#include "../proto/http.pb.h"
+#include "service_container.hpp"
+#include <boost/beast/http/status.hpp>
+#include <boost/beast/http/verb.hpp>
 #include <functional>
 
 
 namespace lps {
 
-HttpSession::HttpSession(boost::asio::ip::tcp::socket&& socket) : stream_(std::move(socket))
+HttpSession::HttpSession(boost::asio::ip::tcp::socket&& socket, std::shared_ptr<CConMgr> con_mgr)
+    : stream_(std::move(socket)), con_mgr_(con_mgr)
 {
     //
 }
@@ -65,62 +70,30 @@ void HttpSession::do_close()
 void HttpSession::process_request()
 {
     response_.version(req_.version());
-    response_.keep_alive(false);
+    response_.keep_alive(true);
+    response_.result(boost::beast::http::status::ok);
+    response_.set(boost::beast::http::field::server, "Beast");
 
     switch (req_.method())
     {
     case boost::beast::http::verb::get:
-        response_.result(boost::beast::http::status::ok);
-        response_.set(boost::beast::http::field::server, "Beast");
-        create_response();
+    {
+        response_.set(boost::beast::http::field::content_type, "application/json");
+        handle_get_method();
         break;
-
-    default:
-        // We return responses indicating an error if
-        // we do not recognize the request method.
-        response_.result(boost::beast::http::status::bad_request);
-        response_.set(boost::beast::http::field::content_type, "text/plain");
-        boost::beast::ostream(response_.body())
-            << "Invalid request-method '" << std::string(req_.method_string()) << "'";
+    }
+    case boost::beast::http::verb::post:
+    {
+        handle_post_method();
         break;
+    }
+    default: response_.body() = R"({"status":-1})"; break;
     }
 
     write_response();
 }
 
-void HttpSession::create_response()
-{
-    if (req_.target() == "/count")
-    {
-        response_.set(boost::beast::http::field::content_type, "text/html");
-        boost::beast::ostream(response_.body()) << "<html>\n"
-                                                << "<head><title>Request count</title></head>\n"
-                                                << "<body>\n"
-                                                << "<h1>Request count</h1>\n"
-                                                << "<p>There have been "
-                                                << " requests so far.</p>\n"
-                                                << "</body>\n"
-                                                << "</html>\n";
-    }
-    else if (req_.target() == "/time")
-    {
-        response_.set(boost::beast::http::field::content_type, "text/html");
-        boost::beast::ostream(response_.body()) << "<html>\n"
-                                                << "<head><title>Current time</title></head>\n"
-                                                << "<body>\n"
-                                                << "<h1>Current time</h1>\n"
-                                                << "<p>The current time is "
-                                                << " seconds since the epoch.</p>\n"
-                                                << "</body>\n"
-                                                << "</html>\n";
-    }
-    else
-    {
-        response_.result(boost::beast::http::status::not_found);
-        response_.set(boost::beast::http::field::content_type, "text/plain");
-        boost::beast::ostream(response_.body()) << "File not found\r\n";
-    }
-}
+void HttpSession::create_response() {}
 
 void HttpSession::write_response()
 {
@@ -154,6 +127,27 @@ void HttpSession::on_write(boost::beast::error_code ec, std::size_t bytes_transf
 
     // Read another request
     do_read();
+}
+
+void HttpSession::handle_get_method()
+{
+    if (req_.target() == "/clients")
+    {
+        handle_get_clients();
+    }
+}
+
+void HttpSession::handle_get_clients()
+{
+    if (con_mgr_)
+    {
+        response_.body() = con_mgr_->client_info();
+    }
+}
+
+void HttpSession::handle_post_method()
+{
+    //
 }
 
 }   // namespace lps

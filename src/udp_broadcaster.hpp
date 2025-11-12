@@ -10,10 +10,10 @@ namespace lps {
 class UdpBroadcaster
 {
 private:
-    boost::asio::io_context&                io_context_;
-    boost::asio::ip::udp::socket            socket_;
-    boost::asio::ip::udp::endpoint          broadcast_endpoint_;
-    ServerConfig                            config_;
+    boost::asio::io_context& io_context_;
+    boost::asio::ip::udp::socket socket_;
+    boost::asio::ip::udp::endpoint broadcast_endpoint_;
+    ServerConfig config_;
     std::shared_ptr<LocalPhotoSync::MsgPkg> server_info_msg_;
 
 public:

@@ -2,8 +2,8 @@
 #define CRC_HPP
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace lps {
 // CRC32多项式

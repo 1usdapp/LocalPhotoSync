@@ -2,15 +2,19 @@
 #include "../proto/cmd.h"
 #include <boost/bind/bind.hpp>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <memory>
 
 namespace lps {
-Session::Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config)
+Session::Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config,
+                 std::shared_ptr<ITCPConEvent> event)
     : socket_(std::move(socket)), config_(config), db_(""), buffer_(65536),
-      head_buffer_(kCurHeadLen), device_info_received_(false)
+      head_buffer_(kCurHeadLen), device_info_received_(false), pevent_(event)
 {   // 64KB buffer，包头缓冲区为20字节
+    address_ = std::format(
+        "{}:{}", socket_.remote_endpoint().address().to_string(), socket_.remote_endpoint().port());
 }
 
 Session::~Session()
@@ -28,6 +32,18 @@ Session::~Session()
 
 void Session::start()
 {
+
+    if (pevent_)
+    {
+        id_ = pevent_->on_get_conid();
+        pevent_->on_connected(id_, shared_from_this());
+    }
+
+    do_start();
+}
+
+void Session::do_start()
+{
     // 开始读取包头（20字节）
     auto self(shared_from_this());
     boost::asio::async_read(socket_,
@@ -37,12 +53,34 @@ void Session::start()
                             });
 }
 
+void Session::close_stream()
+{
+    if (socket_.is_open())
+    {
+        socket_.close();
+    }
+}
+
+const std::string& Session::address()
+{
+    return address_;
+}
+
+void Session::close()
+{
+    if (pevent_)
+    {
+        pevent_->on_closed(id_);
+    }
+}
+
 void Session::handle_read_head(const boost::system::error_code& error, size_t bytes_transferred)
 {
     (void)bytes_transferred;   // 参数未使用，避免警告
 
     if (error)
     {
+        close();
         std::cerr << "Read head error: " << error.message() << std::endl;
         return;
     }
@@ -50,6 +88,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
     // 解析包头（自动处理网络字节序转换）
     if (!parse_pkg_head(head_buffer_.data(), head_buffer_.size(), pkg_head_))
     {
+        close();
         std::cerr << "Failed to parse package head" << std::endl;
         return;
     }
@@ -57,6 +96,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
     // 验证包头
     if (pkg_head_.HeadLen != kCurHeadLen)
     {
+        close();
         std::cerr << "Invalid head length: " << static_cast<int>(pkg_head_.HeadLen) << std::endl;
         return;
     }
@@ -64,6 +104,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
     // 计算消息体长度（总长度 - 包头长度）
     if (pkg_head_.PackageLen < kCurHeadLen)
     {
+        close();
         std::cerr << "Invalid package length: " << pkg_head_.PackageLen << std::endl;
         return;
     }
@@ -72,6 +113,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
 
     if (msg_length > 100 * 1024 * 1024)
     {   // 最大100MB
+        close();
         std::cerr << "Message too large: " << msg_length << std::endl;
         return;
     }
@@ -101,6 +143,7 @@ void Session::handle_read_head(const boost::system::error_code& error, size_t by
             }
             else
             {
+                close();
                 std::cout << "Read data error: " << ec.message() << std::endl;
             }
         });
@@ -110,6 +153,7 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
 {
     if (error)
     {
+        close();
         std::cout << "Read data error: " << error.message() << std::endl;
         return;
     }
@@ -120,6 +164,7 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
         LocalPhotoSync::MsgPkg msg_pkg;
         if (!msg_pkg.ParseFromArray((const void*)buffer_.data(), bytes_transferred))
         {
+            close();
             std::cerr << "Failed to parse MsgPkg" << std::endl;
             return;
         }
@@ -135,18 +180,20 @@ void Session::handle_read_data(const boost::system::error_code& error, size_t by
         }
         else
         {
+            close();
             std::cerr << "Unknown message type" << std::endl;
             return;
         }
     }
     catch (std::exception& e)
     {
+        close();
         std::cerr << "Handle data exception: " << e.what() << std::endl;
         return;
     }
 
     // 继续读取下一个消息
-    start();
+    do_start();
 }
 
 void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& stMsg)
@@ -155,8 +202,8 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
 
 
     const auto& req = stMsg;
-    device_id_      = req.deviceid();
-    save_path_      = req.path();
+    device_id_ = req.deviceid();
+    save_path_ = req.path();
 
     // remove begin char /
     while (!save_path_.empty() && *save_path_.begin() == '/')
@@ -177,7 +224,7 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
 
     // 打开或创建数据库
     std::string db_path = full_save_path_ + "/index.db";
-    db_                 = SqliteCrcDB(db_path);
+    db_ = SqliteCrcDB(db_path);
     if (!db_.open())
     {
         std::cerr << "Failed to open database: " << db_path << std::endl;
@@ -201,12 +248,12 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
         return;
     }
 
-    const auto& req      = stMsg;
+    const auto& req = stMsg;
     std::string filename = req.filename();
-    uint64_t    offset   = req.offset();
+    uint64_t offset = req.offset();
     // uint64_t    size         = req.size();
-    bool     has_next_pkt = req.hasnextpkt();
-    uint32_t client_crc   = req.crc32();
+    bool has_next_pkt = req.hasnextpkt();
+    uint32_t client_crc = req.crc32();
 
     // 将protobuf bytes转为vector
     std::vector<uint8_t> data(req.data().begin(), req.data().end());
@@ -266,7 +313,7 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
                       << std::dec << std::endl;
 
             pfile->close();
-            mapPath2File.erase(file_path);
+            map_path_file_.erase(file_path);
         }
 
         send_sync_photo_response(0);
@@ -275,6 +322,11 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
     {
         std::cout << "File write exception: " << e.what() << std::endl;
         send_sync_photo_response(-4);
+    }
+
+    if (pevent_)
+    {
+        pevent_->on_sync_info_update(id_, req.syncinfo());
     }
 }
 
@@ -293,11 +345,11 @@ void Session::send_device_info_response()
     // 构建包头
     PkgHead head;
     head.PackageLen = kCurHeadLen + serialized.size();
-    head.HeadLen    = kCurHeadLen;
-    head.Version    = 1;
-    head.CMDID      = LocalPhotoSync::ID_CSResDeviceInfo;   // 根据实际协议设置CMDID
-    head.Reserve    = 0;
-    head.Reserve2   = 0;
+    head.HeadLen = kCurHeadLen;
+    head.Version = 1;
+    head.CMDID = LocalPhotoSync::ID_CSResDeviceInfo;   // 根据实际协议设置CMDID
+    head.Reserve = 0;
+    head.Reserve2 = 0;
 
     // 编码包头为网络字节序
     std::vector<uint8_t> head_buffer(kCurHeadLen);
@@ -330,11 +382,11 @@ void Session::send_sync_photo_response(int32_t result_id)
     // 构建包头
     PkgHead head;
     head.PackageLen = kCurHeadLen + serialized.size();
-    head.HeadLen    = kCurHeadLen;
-    head.Version    = 1;
-    head.CMDID      = LocalPhotoSync::ID_CSResSyncPhoto;   // 根据实际协议设置CMDID
-    head.Reserve    = 0;
-    head.Reserve2   = 0;
+    head.HeadLen = kCurHeadLen;
+    head.Version = 1;
+    head.CMDID = LocalPhotoSync::ID_CSResSyncPhoto;   // 根据实际协议设置CMDID
+    head.Reserve = 0;
+    head.Reserve2 = 0;
 
     // 编码包头为网络字节序
     std::vector<uint8_t> head_buffer(kCurHeadLen);
@@ -398,19 +450,19 @@ bool Session::update_file_crc(const std::string& filename, uint32_t crc32)
 }
 
 std::shared_ptr<std::fstream> Session::make_or_get_file_handle(const std::string& file_path,
-                                                               bool               new_file)
+                                                               bool new_file)
 {
     // 打开文件进行写入
     std::shared_ptr<std::fstream> pfile;
-    auto                          it = mapPath2File.find(file_path);
-    if (it != mapPath2File.end())
+    auto it = map_path_file_.find(file_path);
+    if (it != map_path_file_.end())
     {
         pfile = it->second;
     }
     else
     {
-        pfile                   = std::make_shared<std::fstream>();
-        mapPath2File[file_path] = pfile;
+        pfile = std::make_shared<std::fstream>();
+        map_path_file_[file_path] = pfile;
         if (new_file)
         {
             // 新文件或覆盖

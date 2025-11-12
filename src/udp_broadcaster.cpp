@@ -1,7 +1,7 @@
 #include "udp_broadcaster.hpp"
-#include "framing.hpp"
 #include "../proto/cmd.h"
 #include "../proto/msgid.pb.h"
+#include "framing.hpp"
 #include <boost/bind/bind.hpp>
 #include <iostream>
 
@@ -20,8 +20,8 @@ UdpBroadcaster::UdpBroadcaster(boost::asio::io_context& io_context, const Server
 void UdpBroadcaster::setup_broadcast_endpoint()
 {
     boost::asio::ip::address broadcast_addr = boost::asio::ip::make_address(config_.broadcast);
-    unsigned short           port           = std::stoi(config_.udp_port);
-    broadcast_endpoint_                     = boost::asio::ip::udp::endpoint(broadcast_addr, port);
+    unsigned short port = std::stoi(config_.udp_port);
+    broadcast_endpoint_ = boost::asio::ip::udp::endpoint(broadcast_addr, port);
 }
 
 void UdpBroadcaster::create_server_info_message()
@@ -67,11 +67,11 @@ void UdpBroadcaster::broadcast_server_info()
         // 构建包头
         PkgHead head;
         head.PackageLen = kCurHeadLen + serialized_data.size();
-        head.HeadLen    = kCurHeadLen;
-        head.Version    = 1;
-        head.CMDID      = LocalPhotoSync::ID_CSNtyServerInfo;   // 根据实际协议设置CMDID
-        head.Reserve    = 0;
-        head.Reserve2   = 0;
+        head.HeadLen = kCurHeadLen;
+        head.Version = 1;
+        head.CMDID = LocalPhotoSync::ID_CSNtyServerInfo;   // 根据实际协议设置CMDID
+        head.Reserve = 0;
+        head.Reserve2 = 0;
 
         // 编码包头为网络字节序
         std::vector<uint8_t> head_buffer(kCurHeadLen);

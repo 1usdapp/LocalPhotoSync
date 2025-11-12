@@ -30,7 +30,7 @@ inline boost::system::error_code read_exact(boost::asio::ip::tcp::socket& socket
                                             std::vector<uint8_t>& buffer, size_t length)
 {
     boost::system::error_code error;
-    size_t                    bytes_read = 0;
+    size_t bytes_read = 0;
     while (bytes_read < length && !error)
     {
         bytes_read += socket.read_some(

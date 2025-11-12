@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(LPServer)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};/opt/homebrew")
@@ -30,6 +30,7 @@ include_directories(proto)
 set(PROTO_FILES 
     proto/csmsg.proto
     proto/msgid.proto
+    proto/http.proto
 )
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
@@ -44,6 +45,8 @@ add_executable(lps_server
     src/http_server.cpp
     src/http_session.cpp
     src/udp_broadcaster.cpp
+    src/con_mgr.cpp
+    src/service_container.cpp
     ${PROTO_SRCS}
     ${PROTO_HDRS}
 )

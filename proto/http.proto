@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package LocalPhotoSync;
+
+
+message HttpGetClient
+{
+    message ClientInfo
+    {
+        uint32 ID = 1;
+        string Address = 2;
+        uint32 PhotoNum = 3;
+        uint32 CurNum = 4;
+    }
+    uint32 status = 1;  
+    string msg = 2;
+    map<uint32,ClientInfo> data = 3;
+}

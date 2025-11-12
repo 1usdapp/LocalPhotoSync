@@ -3,6 +3,7 @@
 
 #include "config.hpp"
 #include "http_session.hpp"
+#include "service_container.hpp"
 #include <algorithm>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
@@ -25,7 +26,8 @@ namespace lps {
 class HttpServer : public std::enable_shared_from_this<HttpServer>
 {
 public:
-    HttpServer(boost::asio::io_context& io_context, const ServerConfig& config);
+    HttpServer(boost::asio::io_context& io_context, const ServerConfig& config,
+               CServiceContainer& sc);
 
     void start_accept();
 
@@ -33,10 +35,11 @@ private:
     void do_accept();
 
 private:
-    boost::asio::io_context&           ioc_;
-    boost::asio::ip::tcp::acceptor     acceptor_;
+    boost::asio::io_context& ioc_;
+    boost::asio::ip::tcp::acceptor acceptor_;
     std::shared_ptr<std::string const> doc_root_;
-    ServerConfig                       config_;
+    ServerConfig config_;
+    CServiceContainer& service_container_;
 };
 
 }   // namespace lps
