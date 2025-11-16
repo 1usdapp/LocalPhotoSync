@@ -20,6 +20,7 @@ public:
     class ITCPConEvent
     {
     public:
+        virtual ~ITCPConEvent(){}
         virtual uint32_t on_get_conid() = 0;
         virtual int on_connected(uint32_t id, std::weak_ptr<Session> psession) = 0;
         virtual int on_closed(uint32_t id) = 0;
