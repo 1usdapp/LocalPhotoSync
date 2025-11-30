@@ -1,7 +1,12 @@
 #include "sqlite_db.hpp"
 #include <iostream>
 #include <sys/stat.h>
-#include <unistd.h>
+#ifdef _WIN32
+    #include <io.h>
+    #include <direct.h>
+#else
+    #include <unistd.h>
+#endif
 
 namespace lps {
 SqliteCrcDB::SqliteCrcDB(const std::string& db_path) : db_(nullptr), db_path_(db_path) {}

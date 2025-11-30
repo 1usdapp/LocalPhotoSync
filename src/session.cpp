@@ -212,7 +212,7 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
     }
 
     // 构建完整保存路径
-    full_save_path_ = (std::filesystem::path(config_.root) / save_path_).c_str();
+    full_save_path_ = (std::filesystem::path(config_.root) / save_path_).string();
 
     // 创建目录
     if (!create_directories(full_save_path_))
@@ -435,7 +435,7 @@ std::string Session::get_full_path(const std::string& filename)
 {
     std::filesystem::path p(full_save_path_);
     p /= filename;
-    return p.c_str();
+    return p.string();
 }
 
 bool Session::check_file_crc(const std::string& filename, uint32_t expected_crc)

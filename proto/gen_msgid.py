@@ -5,7 +5,7 @@ import sys
 
 def parse_proto_file(file_path):
     """Parse the proto file and extract oneof message definitions"""
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r',encoding="utf8") as f:
         content = f.read()
     
     # Find the MsgBody oneof definition

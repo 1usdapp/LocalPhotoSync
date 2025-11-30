@@ -5,9 +5,38 @@
 #include <cstring>
 
 #ifdef _WIN32
-#include <winsock2.h>
+    #include <winsock2.h>
+    #include <windows.h>
+    // #pragma message("INFO: _WIN32 is defined — using Windows headers")
 #else
-#include <arpa/inet.h>
+    #include <arpa/inet.h>
+    // 网络字节序转换辅助函数
+#if !defined(ntohll)
+inline uint64_t ntohll(uint64_t val)
+{
+    if constexpr (sizeof(uint32_t) == 4 && sizeof(uint64_t) == 8)
+    {
+        uint32_t high = ntohl(static_cast<uint32_t>(val >> 32));
+        uint32_t low = ntohl(static_cast<uint32_t>(val & 0xFFFFFFFFUL));
+        return (static_cast<uint64_t>(low) << 32) | high;
+    }
+    return val;
+}
+#endif
+
+#if !defined(htonll)
+inline uint64_t htonll(uint64_t val)
+{
+    if constexpr (sizeof(uint32_t) == 4 && sizeof(uint64_t) == 8)
+    {
+        uint32_t high = htonl(static_cast<uint32_t>(val >> 32));
+        uint32_t low = htonl(static_cast<uint32_t>(val & 0xFFFFFFFFUL));
+        return (static_cast<uint64_t>(low) << 32) | high;
+    }
+    return val;
+}
+#endif
+
 #endif
 
 // 消息包头，每个字段使用网络字节序
@@ -23,32 +52,6 @@ struct PkgHead
 
 const int kCurHeadLen = 24;
 
-// 网络字节序转换辅助函数
-#ifndef ntohll
-inline uint64_t ntohll(uint64_t val)
-{
-    if constexpr (sizeof(uint32_t) == 4 && sizeof(uint64_t) == 8)
-    {
-        uint32_t high = ntohl(static_cast<uint32_t>(val >> 32));
-        uint32_t low = ntohl(static_cast<uint32_t>(val & 0xFFFFFFFFUL));
-        return (static_cast<uint64_t>(low) << 32) | high;
-    }
-    return val;
-}
-#endif
-
-#ifndef htonll
-inline uint64_t htonll(uint64_t val)
-{
-    if constexpr (sizeof(uint32_t) == 4 && sizeof(uint64_t) == 8)
-    {
-        uint32_t high = htonl(static_cast<uint32_t>(val >> 32));
-        uint32_t low = htonl(static_cast<uint32_t>(val & 0xFFFFFFFFUL));
-        return (static_cast<uint64_t>(low) << 32) | high;
-    }
-    return val;
-}
-#endif
 
 // 从网络字节序字节流中解析PkgHead
 inline bool parse_pkg_head(const uint8_t* buffer, size_t len, PkgHead& head)

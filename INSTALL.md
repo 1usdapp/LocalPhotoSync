@@ -66,6 +66,18 @@ sudo dnf install -y \
     python3
 ```
 
+
+### windows
+```powershell
+cd  LocalPhotoSync
+git clone https://github.com/microsoft/vcpkg.git
+./bootstrap-vcpkg.bat
+.\vcpkg.exe install zlib:x64-windows
+.\vcpkg.exe install sqlite3:x64-windows
+.\vcpkg.exe install protobuf:x64-windows
+.\vcpkg.exe install boost:x64-windows
+```
+
 ## 构建步骤
 
 ### 方法一：使用构建脚本（推荐）
