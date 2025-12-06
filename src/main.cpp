@@ -6,18 +6,36 @@
 #include "tcp_server.hpp"
 #include "udp_broadcaster.hpp"
 #include <boost/asio.hpp>
+#include <gflags/gflags.h>
 #include <iostream>
 #include <memory>
 
-int main()
+
+
+DEFINE_string(tcp_port, "9176", "TCP服务器端口");
+DEFINE_string(udp_port, "9176", "UDP服务器端口");
+DEFINE_string(http_port, "9175", "HTTP服务器端口");
+DEFINE_string(root, "./data", "图片根目录");
+
+
+int main(int argc, char* argv[])
 {
+    // 解析命令行参数
+    using namespace GFLAGS_NAMESPACE;
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
     try
     {
+        ServerConfig config;
+        config.tcp_port = FLAGS_tcp_port;
+        config.udp_port = FLAGS_udp_port;
+        config.http_port = FLAGS_http_port;
+        config.root = FLAGS_root;
+
         // 初始化CRC32表
         lps::init_crc32_table();
 
         boost::asio::io_context io_context;
-        ServerConfig config;
+
 
         // 创建TCP服务器
         lps::TcpServer tcp_server(io_context, config, lps::CCServiceContainerInstance::instance());
@@ -26,7 +44,8 @@ int main()
         lps::UdpBroadcaster udp_broadcaster(io_context, config);
 
         // 创建http 服务器
-        lps::HttpServer http_server(io_context, config,lps::CCServiceContainerInstance::instance());
+        lps::HttpServer http_server(
+            io_context, config, lps::CCServiceContainerInstance::instance());
 
         // 启动UDP广播
         udp_broadcaster.start_broadcast();

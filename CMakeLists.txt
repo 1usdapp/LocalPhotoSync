@@ -14,17 +14,22 @@ if(APPLE)
 endif()  
 
 
-
+if(MSVC)
+    add_compile_options(/utf-8)  # 强制源文件按 UTF-8 解析
+endif()
 if(WIN32)
     # Set CMAKE_PREFIX_PATH to vcpkg installed directory
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows")
     add_definitions(-D_WIN32_WINNT=0x0603)  # Windows 8.1
     set(CMAKE_TOOLCHAIN_FILE "./vcpkg/scripts/buildsystems/vcpkg.cmake")    
+    set(GFLAGS_USE_TARGET_NAMESPACE ON)
     # Find packages using vcpkg  
     find_package(Protobuf CONFIG REQUIRED)  
     find_package(unofficial-sqlite3 CONFIG REQUIRED)  
     find_package(ZLIB MODULE REQUIRED)  
     find_package(Boost CONFIG REQUIRED)
+    # gflags (installed via vcpkg on Windows)
+    find_package(gflags CONFIG REQUIRED)
     # 包含目录
     include_directories(${Protobuf_INCLUDE_DIRS})  
     include_directories(${CMAKE_CURRENT_BINARY_DIR})  
@@ -35,6 +40,7 @@ else()
     find_package(Protobuf   REQUIRED )
     find_package(SQLite3 REQUIRED)
     find_package(ZLIB REQUIRED)
+    find_package(gflags REQUIRED)
     # 包含目录
 
     include_directories(${Boost_INCLUDE_DIRS})
@@ -78,20 +84,22 @@ add_executable(lps_server
 )  
   
 # 链接库
-if(WIN32)  
-    target_link_libraries(lps_server  
-        Boost::boost  
-        protobuf::libprotobuf  
-        unofficial::sqlite3::sqlite3  
-        ZLIB::ZLIB  
+if(WIN32)
+    target_link_libraries(lps_server
+        Boost::boost
+        protobuf::libprotobuf
+        unofficial::sqlite3::sqlite3
+        ZLIB::ZLIB
+        gflags::gflags
         ws2_32
     )
-elseif(APPLE)  
-    target_link_libraries(lps_server  
+elseif(APPLE)
+    target_link_libraries(lps_server
         ${Boost_LIBRARIES}
         ${Protobuf_LIBRARIES}
         ${SQLite3_LIBRARIES}
         ${ZLIB_LIBRARIES}
+        ${gflags_LIBRARIES}
         absl::check
         absl::log
         absl::strings
@@ -99,25 +107,26 @@ elseif(APPLE)
         absl::str_format
         absl::base
         absl::time
-    ) 
+    )
 else()
     target_link_libraries(lps_server
         ${Boost_LIBRARIES}
         ${Protobuf_LIBRARIES}
         ${SQLite3_LIBRARIES}
         ${ZLIB_LIBRARIES}
+        ${gflags_LIBRARIES}
         # absl::check
         # absl::log
         # absl::strings
     )
 
-endif()  
+endif()
 
 
 
 if(WIN32)
-target_compile_options(lps_server PRIVATE  -Wall -g -ggdb /w) 
+    target_compile_options(lps_server PRIVATE  -Wall /w) 
 else()
 # 设置编译选项
-target_compile_options(lps_server PRIVATE -Wall -Wextra -g -ggdb)
+    target_compile_options(lps_server PRIVATE -Wall -Wextra -g -ggdb)
 endif()

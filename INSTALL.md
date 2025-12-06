@@ -21,6 +21,7 @@ brew install boost
 brew install protobuf
 brew install sqlite3
 brew install zlib
+brew install gflags
 ```
 
 ### Ubuntu/Debian
@@ -35,7 +36,8 @@ sudo apt-get install -y \
     protobuf-compiler \
     libsqlite3-dev \
     zlib1g-dev \
-    python3
+    python3\
+    libgflags-dev
 ```
 
 ### CentOS/RHEL
@@ -49,7 +51,8 @@ sudo yum install -y \
     protobuf-compiler \
     sqlite-devel \
     zlib-devel \
-    python3
+    python3\
+    gflags
 ```
 
 ### Fedora
@@ -63,7 +66,8 @@ sudo dnf install -y \
     protobuf-compiler \
     sqlite-devel \
     zlib-devel \
-    python3
+    python3\
+    gflags
 ```
 
 
@@ -76,6 +80,7 @@ git clone https://github.com/microsoft/vcpkg.git
 .\vcpkg.exe install sqlite3:x64-windows
 .\vcpkg.exe install protobuf:x64-windows
 .\vcpkg.exe install boost:x64-windows
+.\vcpkg.exe install gflags:x64-windows
 ```
 
 ## 构建步骤
