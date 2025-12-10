@@ -69,6 +69,22 @@ void HttpSession::do_close()
 
 void HttpSession::process_request()
 {
+    // 处理 OPTIONS 预检请求（Pre-flight）
+    if (req_.method() == boost::beast::http::verb::options) {
+        response_.result(boost::beast::http::status::ok);
+        response_.set(boost::beast::http::field::access_control_allow_origin, "*");
+        response_.set(boost::beast::http::field::access_control_allow_methods, "GET, POST, PUT, DELETE, OPTIONS");
+        response_.set(boost::beast::http::field::access_control_allow_headers, "Content-Type, Authorization");
+        response_.set(boost::beast::http::field::content_length, "0");
+        write_response();
+        return;
+    }
+
+    // 在所有响应中添加 CORS 头
+    response_.set(boost::beast::http::field::access_control_allow_origin, "*");
+    // 如果需要支持凭据，使用具体 origin 并加 Credentials 头
+
+
     response_.version(req_.version());
     response_.keep_alive(true);
     response_.result(boost::beast::http::status::ok);

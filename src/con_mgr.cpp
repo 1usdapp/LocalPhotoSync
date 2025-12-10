@@ -114,7 +114,7 @@ std::string CConMgr::client_info()
 
     if (status.ok())
     {
-        std::cout << "JSON Output:\n" << json_string << std::endl;
+        // std::cout << "JSON Output:\n" << json_string << std::endl;
     }
     else
     {
