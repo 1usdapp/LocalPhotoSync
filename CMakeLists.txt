@@ -130,3 +130,9 @@ else()
 # 设置编译选项
     target_compile_options(lps_server PRIVATE -Wall -Wextra -g -ggdb)
 endif()
+
+# Optionally build tests if the `tests` directory exists.
+option(ENABLE_TESTS "Build unit tests" ON)
+if(ENABLE_TESTS AND EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+endif()

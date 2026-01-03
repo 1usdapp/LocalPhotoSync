@@ -1,3 +1,20 @@
+Language:        Cpp
+BasedOnStyle:    Google
+IndentWidth:     4
+TabWidth:        4
+UseTab:          Never
+ColumnLimit:     100
+SortIncludes:    true
+AllowShortFunctionsOnASingleLine: Inline
+DerivePointerAlignment: false
+PointerAlignment: Left
+Standard:        Cpp20
+Cpp11BracedListStyle: true
+BreakBeforeBraces: Attach
+
+# 调整以下项以匹配团队偏好
+# - 如果你偏好 2 空格缩进，请将 IndentWidth 改为 2
+# - 如果你偏好 LLVM 风格，请把 BasedOnStyle 改为: LLVM
 
 # https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 # https://www.bbsmax.com/A/VGzlMjexJb/
