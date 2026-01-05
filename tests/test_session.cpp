@@ -13,10 +13,11 @@ TEST(SessionTest, DeviceInfoCreatesDirAndDb)
     SocketPair sockets(ioc);
 
     auto con_mgr = std::make_shared<CConMgr>();
+    auto db_mgr = std::make_shared<SqliteDBManager>();
     ServerConfig cfg;
     cfg.root = tmp.path.string();
 
-    auto session = std::make_shared<Session>(std::move(sockets.server), cfg, con_mgr);
+    auto session = std::make_shared<Session>(std::move(sockets.server), cfg, con_mgr, db_mgr);
 
     std::thread t([&]() { ioc.run(); });
     session->start();
@@ -50,10 +51,11 @@ TEST(SessionTest, SyncPhotoWritesFile)
     SocketPair sockets(ioc);
 
     auto con_mgr = std::make_shared<CConMgr>();
+    auto db_mgr = std::make_shared<SqliteDBManager>();
     ServerConfig cfg;
     cfg.root = tmp.path.string();
 
-    auto session = std::make_shared<Session>(std::move(sockets.server), cfg, con_mgr);
+    auto session = std::make_shared<Session>(std::move(sockets.server), cfg, con_mgr, db_mgr);
     std::thread t([&]() { ioc.run(); });
     session->start();
 
@@ -115,10 +117,11 @@ TEST(HttpSessionTest, GetClientsReturnsJson)
     {
         SocketPair tcp_sockets(ioc);
         auto con_mgr = std::make_shared<CConMgr>();
+        auto db_mgr = std::make_shared<SqliteDBManager>();
         ServerConfig cfg;
         cfg.root = tmp.path.string();
 
-        auto session = std::make_shared<Session>(std::move(tcp_sockets.server), cfg, con_mgr);
+        auto session = std::make_shared<Session>(std::move(tcp_sockets.server), cfg, con_mgr, db_mgr);
         std::thread t([&]() { ioc.run_for(std::chrono::milliseconds(300)); });
         session->start();
 

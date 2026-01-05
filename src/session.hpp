@@ -6,7 +6,7 @@
 #include "../proto/msgid.pb.h"
 #include "config.hpp"
 #include "crc.hpp"
-#include "sqlite_db.hpp"
+#include "sqlite_db_manager.hpp"
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <memory>
@@ -31,7 +31,8 @@ public:
 private:
     boost::asio::ip::tcp::socket socket_;
     ServerConfig config_;
-    SqliteCrcDB db_;
+    std::shared_ptr<SqliteDBManager> db_manager_;
+    std::string db_path_;
     std::string device_id_;
     std::string save_path_;
     std::string full_save_path_;
@@ -47,7 +48,8 @@ private:
 
 public:
     Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config,
-            std::shared_ptr<ITCPConEvent> event);
+            std::shared_ptr<ITCPConEvent> event,
+            std::shared_ptr<SqliteDBManager> db_manager);
     ~Session();
 
     void start();

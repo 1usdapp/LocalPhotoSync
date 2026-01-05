@@ -72,6 +72,7 @@ add_executable(lps_server
     src/main.cpp  
     src/crc.cpp  
     src/sqlite_db.cpp  
+    src/sqlite_db_manager.cpp  
     src/session.cpp  
     src/tcp_server.cpp  
     src/http_server.cpp  

@@ -9,9 +9,10 @@
 
 namespace lps {
 Session::Session(boost::asio::ip::tcp::socket socket, const ServerConfig& config,
-                 std::shared_ptr<ITCPConEvent> event)
-    : socket_(std::move(socket)), config_(config), db_(""), buffer_(65536),
-      head_buffer_(kCurHeadLen), device_info_received_(false), pevent_(event)
+                 std::shared_ptr<ITCPConEvent> event,
+                 std::shared_ptr<SqliteDBManager> db_manager)
+    : socket_(std::move(socket)), config_(config), db_manager_(db_manager), db_path_(""),
+      buffer_(65536), head_buffer_(kCurHeadLen), device_info_received_(false), pevent_(event)
 {   // 64KB buffer，包头缓冲区为20字节
     address_ = std::format(
         "{}:{}", socket_.remote_endpoint().address().to_string(), socket_.remote_endpoint().port());
@@ -21,6 +22,12 @@ Session::~Session()
 {
     try
     {
+        // 释放DB引用计数
+        if (!db_path_.empty() && db_manager_)
+        {
+            db_manager_->release_db(db_path_);
+        }
+
         if (socket_.is_open())
         {
             socket_.close();
@@ -223,11 +230,10 @@ void Session::handle_device_info_request(const LocalPhotoSync::CSReqDeviceInfo& 
     }
 
     // 打开或创建数据库
-    std::string db_path = full_save_path_ + "/index.db";
-    db_ = SqliteCrcDB(db_path);
-    if (!db_.open())
+    db_path_ = full_save_path_ + "/index.db";
+    if (!db_manager_->acquire_db(db_path_))
     {
-        std::cerr << "Failed to open database: " << db_path << std::endl;
+        std::cerr << "Failed to acquire database: " << db_path_ << std::endl;
         send_device_info_response();
         return;
     }
@@ -265,7 +271,8 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
     if (offset == 0)
     {
         uint32_t existing_crc = 0;
-        if (db_.get_file_crc(filename, existing_crc) && std::filesystem::exists(file_path))
+        if (db_manager_->get_file_crc(db_path_, filename, existing_crc) &&
+            std::filesystem::exists(file_path))
         {
             if (existing_crc == client_crc)
             {
@@ -305,7 +312,7 @@ void Session::handle_sync_photo_request(const LocalPhotoSync::CSReqSyncPhoto& st
         if (!has_next_pkt)
         {
             uint32_t file_crc = lps::crc32_file(file_path);
-            if (!db_.set_file_crc(filename, file_crc))
+            if (!db_manager_->set_file_crc(db_path_, filename, file_crc))
             {
                 std::cerr << "Failed to update file CRC in database" << std::endl;
             }
@@ -446,7 +453,7 @@ bool Session::check_file_crc(const std::string& filename, uint32_t expected_crc)
 
 bool Session::update_file_crc(const std::string& filename, uint32_t crc32)
 {
-    return db_.set_file_crc(filename, crc32);
+    return db_manager_->set_file_crc(db_path_, filename, crc32);
 }
 
 std::shared_ptr<std::fstream> Session::make_or_get_file_handle(const std::string& file_path,

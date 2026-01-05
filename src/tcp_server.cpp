@@ -30,7 +30,9 @@ void TcpServer::do_accept()
                       << socket.remote_endpoint().port() << std::endl;
 
             // 创建新的会话
-            auto session = std::make_shared<Session>(std::move(socket), config_, service_container_.GetConMgr());
+            auto session = std::make_shared<Session>(std::move(socket), config_, 
+                                                     service_container_.GetConMgr(),
+                                                     service_container_.GetDBManager());
             session->start();
         }
         else

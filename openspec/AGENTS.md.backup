@@ -257,7 +257,7 @@ openspec/
 ### 需求措辞
 - 对规范性需求使用 SHALL/MUST（除非故意使用非规范性，否则避免使用 should/may）
 
-### 增量操作
+### Delta Operations
 
 - `## ADDED Requirements` - 新能力
 - `## MODIFIED Requirements` - 更改行为
@@ -267,71 +267,71 @@ openspec/
 标题使用 `trim(header)` 匹配 - 忽略空格。
 
 #### 何时使用 ADDED vs MODIFIED
-- ADDED：引入一个可以独立作为需求的新能力或子能力。当变更是正交的（例如，添加"斜杠命令配置"）而不是改变现有需求的语义时，优先使用 ADDED。
-- MODIFIED：更改现有需求的行为、范围或验收标准。始终粘贴完整的、更新后的需求内容（标题 + 所有场景）。归档器会用你在这里提供的内容替换整个需求；部分增量会丢失先前的细节。
-- RENAMED：仅在名称更改时使用。如果同时更改行为，则使用 RENAMED（名称）加 MODIFIED（内容）引用新名称。
+- ADDED: Introduces a new capability or sub-capability that can stand alone as a requirement. Prefer ADDED when the change is orthogonal (e.g., adding "Slash Command Configuration") rather than altering the semantics of an existing requirement.
+- MODIFIED: Changes the behavior, scope, or acceptance criteria of an existing requirement. Always paste the full, updated requirement content (header + all scenarios). The archiver will replace the entire requirement with what you provide here; partial deltas will drop previous details.
+- RENAMED: Use when only the name changes. If you also change behavior, use RENAMED (name) plus MODIFIED (content) referencing the new name.
 
-常见陷阱：使用 MODIFIED 添加新关注点而不包含先前的文本。这会导致归档时丢失细节。如果你没有明确更改现有需求，请在 ADDED 下添加新需求。
+Common pitfall: Using MODIFIED to add a new concern without including the previous text. This causes loss of detail at archive time. If you aren’t explicitly changing the existing requirement, add a new requirement under ADDED instead.
 
-正确编写 MODIFIED 需求：
-1）在 `openspec/specs/<capability>/spec.md` 中定位现有需求。
-2）复制整个需求块（从 `### Requirement: ...` 到其场景）。
-3）将其粘贴到 `## MODIFIED Requirements` 下并编辑以反映新行为。
-4）确保标题文本完全匹配（忽略空格）并至少保留一个 `#### Scenario:`。
+Authoring a MODIFIED requirement correctly:
+1) Locate the existing requirement in `openspec/specs/<capability>/spec.md`.
+2) Copy the entire requirement block (from `### Requirement: ...` through its scenarios).
+3) Paste it under `## MODIFIED Requirements` and edit to reflect the new behavior.
+4) Ensure the header text matches exactly (whitespace-insensitive) and keep at least one `#### Scenario:`.
 
-RENAMED 示例:
+Example for RENAMED:
 ```markdown
 ## RENAMED Requirements
 - FROM: `### Requirement: Login`
 - TO: `### Requirement: User Authentication`
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 常见错误
+### Common Errors
 
-**"变更必须至少有一个增量"**
-- 检查 `changes/[name]/specs/` 是否存在 .md 文件
-- 验证文件是否有操作前缀（## ADDED Requirements）
+**"Change must have at least one delta"**
+- Check `changes/[name]/specs/` exists with .md files
+- Verify files have operation prefixes (## ADDED Requirements)
 
-**"需求必须至少有一个场景"**
-- 检查场景是否使用 `#### Scenario:` 格式（4 个井号）
-- 不要对场景标题使用项目符号或粗体
+**"Requirement must have at least one scenario"**
+- Check scenarios use `#### Scenario:` format (4 hashtags)
+- Don't use bullet points or bold for scenario headers
 
-**静默场景解析失败**
-- 需要精确格式：`#### Scenario: Name`
-- 调试命令：`openspec show [change] --json --deltas-only`
+**Silent scenario parsing failures**
+- Exact format required: `#### Scenario: Name`
+- Debug with: `openspec show [change] --json --deltas-only`
 
-### 验证技巧
+### Validation Tips
 
 ```bash
-# 始终使用严格模式进行全面检查
+# Always use strict mode for comprehensive checks
 openspec validate [change] --strict
 
-# 调试增量解析
+# Debug delta parsing
 openspec show [change] --json | jq '.deltas'
 
-# 检查特定需求
+# Check specific requirement
 openspec show [spec] --json -r 1
 ```
 
-## 快乐路径脚本
+## Happy Path Script
 
 ```bash
-# 1) 探索当前状态
+# 1) Explore current state
 openspec spec list --long
 openspec list
-# 可选的全文搜索：
+# Optional full-text search:
 # rg -n "Requirement:|Scenario:" openspec/specs
 # rg -n "^#|Requirement:" openspec/changes
 
-# 2) 选择变更 ID 并搭建脚手架
+# 2) Choose change id and scaffold
 CHANGE=add-two-factor-auth
 mkdir -p openspec/changes/$CHANGE/{specs/auth}
 printf "## Why\n...\n\n## What Changes\n- ...\n\n## Impact\n- ...\n" > openspec/changes/$CHANGE/proposal.md
 printf "## 1. Implementation\n- [ ] 1.1 ...\n" > openspec/changes/$CHANGE/tasks.md
 
-# 3) 添加增量（示例）
+# 3) Add deltas (example)
 cat > openspec/changes/$CHANGE/specs/auth/spec.md << 'EOF'
 ## ADDED Requirements
 ### Requirement: Two-Factor Authentication
@@ -342,11 +342,11 @@ Users MUST provide a second factor during login.
 - **THEN** an OTP challenge is required
 EOF
 
-# 4) 验证
+# 4) Validate
 openspec validate $CHANGE --strict
 ```
 
-## 多能力示例
+## Multi-Capability Example
 
 ```
 openspec/changes/add-2fa-notify/
@@ -373,84 +373,84 @@ notifications/spec.md
 ...
 ```
 
-## 最佳实践
+## Best Practices
 
-### 简单优先
-- 默认新代码少于 100 行
-- 使用单文件实现，直到证明不够用
-- 没有明确理由不使用框架
-- 选择无聊的、经过验证的模式
+### Simplicity First
+- Default to <100 lines of new code
+- Single-file implementations until proven insufficient
+- Avoid frameworks without clear justification
+- Choose boring, proven patterns
 
-### 复杂性触发器
-仅在以下情况下增加复杂性：
-- 性能数据显示当前解决方案太慢
-- 具体的规模要求（>1000 用户，>100MB 数据）
-- 需要抽象的多个经过验证的用例
+### Complexity Triggers
+Only add complexity with:
+- Performance data showing current solution too slow
+- Concrete scale requirements (>1000 users, >100MB data)
+- Multiple proven use cases requiring abstraction
 
-### 清晰的引用
-- 代码位置使用 `file.ts:42` 格式
-- 规范引用格式为 `specs/auth/spec.md`
-- 链接相关的变更和 PR
+### Clear References
+- Use `file.ts:42` format for code locations
+- Reference specs as `specs/auth/spec.md`
+- Link related changes and PRs
 
-### 能力命名
-- 使用动词-名词：`user-auth`、`payment-capture`
-- 每个能力单一目的
-- 10 分钟可理解性规则
-- 如果描述需要"AND"则拆分
+### Capability Naming
+- Use verb-noun: `user-auth`, `payment-capture`
+- Single purpose per capability
+- 10-minute understandability rule
+- Split if description needs "AND"
 
-### 变更 ID 命名
-- 使用 kebab-case，简短且描述性：`add-two-factor-auth`
-- 优先使用动词前缀：`add-`、`update-`、`remove-`、`refactor-`
-- 确保唯一性；如果已被占用，追加 `-2`、`-3` 等
+### Change ID Naming
+- Use kebab-case, short and descriptive: `add-two-factor-auth`
+- Prefer verb-led prefixes: `add-`, `update-`, `remove-`, `refactor-`
+- Ensure uniqueness; if taken, append `-2`, `-3`, etc.
 
-## 工具选择指南
+## Tool Selection Guide
 
-| 任务 | 工具 | 原因 |
+| Task | Tool | Why |
 |------|------|-----|
-| 按模式查找文件 | Glob | 快速模式匹配 |
-| 搜索代码内容 | Grep | 优化的正则表达式搜索 |
-| 读取特定文件 | Read | 直接文件访问 |
-| 探索未知范围 | Task | 多步骤调查 |
+| Find files by pattern | Glob | Fast pattern matching |
+| Search code content | Grep | Optimized regex search |
+| Read specific files | Read | Direct file access |
+| Explore unknown scope | Task | Multi-step investigation |
 
-## 错误恢复
+## Error Recovery
 
-### 变更冲突
-1. 运行 `openspec list` 查看活动变更
-2. 检查重叠的规范
-3. 与变更所有者协调
-4. 考虑合并提案
+### Change Conflicts
+1. Run `openspec list` to see active changes
+2. Check for overlapping specs
+3. Coordinate with change owners
+4. Consider combining proposals
 
-### 验证失败
-1. 使用 `--strict` 标志运行
-2. 检查 JSON 输出以获取详细信息
-3. 验证规范文件格式
-4. 确保场景格式正确
+### Validation Failures
+1. Run with `--strict` flag
+2. Check JSON output for details
+3. Verify spec file format
+4. Ensure scenarios properly formatted
 
-### 缺少上下文
-1. 首先阅读 project.md
-2. 检查相关规范
-3. 查看最近的归档
-4. 请求澄清
+### Missing Context
+1. Read project.md first
+2. Check related specs
+3. Review recent archives
+4. Ask for clarification
 
-## 快速参考
+## Quick Reference
 
-### 阶段指示器
-- `changes/` - 已提议，尚未构建
-- `specs/` - 已构建并部署
-- `archive/` - 已完成的变更
+### Stage Indicators
+- `changes/` - Proposed, not yet built
+- `specs/` - Built and deployed
+- `archive/` - Completed changes
 
-### 文件用途
-- `proposal.md` - 为什么和做什么
-- `tasks.md` - 实现步骤
-- `design.md` - 技术决策
-- `spec.md` - 需求和行为
+### File Purposes
+- `proposal.md` - Why and what
+- `tasks.md` - Implementation steps
+- `design.md` - Technical decisions
+- `spec.md` - Requirements and behavior
 
-### CLI 必备命令
+### CLI Essentials
 ```bash
-openspec list              # 正在进行什么？
-openspec show [item]       # 查看详细信息
-openspec validate --strict # 是否正确？
-openspec archive <change-id> [--yes|-y]  # 标记为完成（添加 --yes 用于自动化）
+openspec list              # What's in progress?
+openspec show [item]       # View details
+openspec validate --strict # Is it correct?
+openspec archive <change-id> [--yes|-y]  # Mark complete (add --yes for automation)
 ```
 
-记住：规范是真理。变更是提议。保持它们同步。
+Remember: Specs are truth. Changes are proposals. Keep them in sync.

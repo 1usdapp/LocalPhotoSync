@@ -37,6 +37,16 @@
 
 ### 2. 数据存储模块
 
+#### SQLite数据库连接管理器 (`src/sqlite_db_manager.*`)
+- ✅ 集中管理所有SQLite数据库连接
+- ✅ 每个目录路径一个共享连接（避免多连接冲突）
+- ✅ 引用计数机制：
+  - Session初始化时递增计数
+  - Session析构时递减计数
+  - 计数为0时自动关闭DB
+- ✅ 便利方法：get_file_crc()、set_file_crc()、delete_file()
+- ✅ 单线程安全：Boost.Asio事件循环自然序列化操作，无需互斥锁
+
 #### SQLite数据库 (`src/sqlite_db.*`)
 - ✅ 每个目录独立的index.db数据库
 - ✅ photos表：(filename TEXT PRIMARY KEY, crc32 INTEGER)
@@ -99,12 +109,16 @@
 ### 新增/完善的文件
 
 1. **源代码文件**
-   - `src/session.cpp` (310行) - Session会话实现
-   - `src/tcp_server.cpp` (47行) - TCP服务器实现
+   - `src/sqlite_db_manager.cpp` (95行) - SQLite数据库连接管理器实现
+   - `src/session.cpp` (325行) - Session会话实现（已更新使用Manager）
+   - `src/service_container.cpp` (23行) - 服务容器实现（已添加DBManager）
+   - `src/tcp_server.cpp` (50行) - TCP服务器实现（已更新传递Manager）
    - `src/udp_broadcaster.cpp` (78行) - UDP广播器实现
 
-2. **头文件**（已存在，保持不变）
-   - `src/session.hpp` - Session接口定义
+2. **头文件**（已存在或新增）
+   - `src/sqlite_db_manager.hpp` - SQLite连接管理器接口定义
+   - `src/session.hpp` - Session接口定义（已更新）
+   - `src/service_container.hpp` - 服务容器接口（已更新）
    - `src/tcp_server.hpp` - TCP服务器接口
    - `src/udp_broadcaster.hpp` - UDP广播器接口
    - `src/config.hpp` - 配置管理

@@ -25,12 +25,14 @@ add_executable(lps_unit_tests
 	${CMAKE_CURRENT_SOURCE_DIR}/test_crc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_config.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_sqlite_db.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/test_sqlite_db_manager.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_framing.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_service.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_session.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test_network.cpp
 	${CMAKE_SOURCE_DIR}/src/crc.cpp
 	${CMAKE_SOURCE_DIR}/src/sqlite_db.cpp
+	${CMAKE_SOURCE_DIR}/src/sqlite_db_manager.cpp
 	${CMAKE_SOURCE_DIR}/src/con_mgr.cpp
 	${CMAKE_SOURCE_DIR}/src/service_container.cpp
 	${CMAKE_SOURCE_DIR}/src/session.cpp
