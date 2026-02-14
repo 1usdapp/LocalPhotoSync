@@ -1,274 +1,255 @@
 # LocalPhotoSync 服务器实现总结
 
-## 完成日期
-2025-10-27
+## 更新日期
+2026-02-14
 
 ## 项目概述
-本项目是一个基于C++的局域网照片同步服务器，使用Boost.Asio进行异步网络通信，Protobuf作为序列化协议，SQLite存储文件元数据。
+本项目是一个基于C++的局域网照片同步服务器，使用 Boost.Asio/Beast 进行异步网络通信与 HTTP 服务，Protobuf 作为序列化协议，SQLite 存储文件元数据，并结合 gflags 进行配置管理。
 
 ## 已实现的功能
 
 ### 1. 核心网络模块
 
-#### UDP广播服务 (`src/udp_broadcaster.*`)
+#### UDP 广播服务 (`src/udp_broadcaster.*`)
 - ✅ 每秒向局域网广播服务器信息
-- ✅ 发送CSNtyServerInfo消息，包含TCP端口、服务器名称、根路径、操作系统信息
-- ✅ 使用长度前缀+Protobuf的帧格式
+- ✅ 发送 `CSNtyServerInfo` 消息，包含 TCP 端口、服务器名称、根路径、操作系统信息
+- ✅ 使用自定义包头 `PkgHead` + Protobuf 的帧格式
 - ✅ 支持可配置的广播地址和端口
 
-#### TCP服务器 (`src/tcp_server.*`)
-- ✅ 监听配置的TCP端口
+#### TCP 服务器 (`src/tcp_server.*`)
+- ✅ 监听配置的 TCP 端口
 - ✅ 异步接受客户端连接
-- ✅ 为每个连接创建独立的Session会话
+- ✅ 为每个连接创建独立的 Session 会话
 - ✅ 支持并发多客户端连接
 
-#### Session会话管理 (`src/session.*`)
-- ✅ 实现完整的消息帧协议（4字节大端长度前缀 + Protobuf payload）
-- ✅ 处理CSReqDeviceInfo请求：
-  - 绑定设备ID和保存路径
-  - 自动创建多级目录
-  - 初始化该目录的SQLite数据库
-- ✅ 处理CSReqSyncPhoto请求：
-  - 支持文件分片上传
-  - 分片级CRC32校验
-  - 文件级CRC32去重（完整文件快速跳过）
-  - 最后一片写入后计算整文件CRC并更新数据库
+#### Session 会话管理 (`src/session.*`)
+- ✅ 自定义包头协议：`PkgHead` 共 24 字节（`PackageLen/HeadLen/Version/CMDID/Reserve/Reserve2`）+ Protobuf payload
+- ✅ 消息长度校验（限制最大 100MB）
+- ✅ 处理 `CSReqDeviceInfo` 请求：
+   - 绑定设备 ID 和保存路径
+   - 自动创建多级目录（移除路径前导 `/`）
+   - 初始化该目录的 SQLite 数据库
+- ✅ 处理 `CSReqSyncPhoto` 请求：
+   - 支持文件分片上传并按 `Offset` 写入
+   - 当 `Offset == 0` 且数据库中 CRC 与客户端 CRC 一致时，直接跳过写入
+   - 最后一片写入后计算整文件 CRC 并更新数据库
 - ✅ 异步读写，避免阻塞
+- ✅ 同步进度更新回调（`SyncInfo`）
 
-### 2. 数据存储模块
+#### HTTP 服务 (`src/http_server.*`, `src/http_session.*`)
+- ✅ 基于 Boost.Beast 的 HTTP 服务器
+- ✅ `GET /clients` 返回当前连接与同步进度信息（JSON）
+- ✅ 支持 CORS 预检与基础跨域响应
 
-#### SQLite数据库连接管理器 (`src/sqlite_db_manager.*`)
-- ✅ 集中管理所有SQLite数据库连接
-- ✅ 每个目录路径一个共享连接（避免多连接冲突）
-- ✅ 引用计数机制：
-  - Session初始化时递增计数
-  - Session析构时递减计数
-  - 计数为0时自动关闭DB
-- ✅ 便利方法：get_file_crc()、set_file_crc()、delete_file()
-- ✅ 单线程安全：Boost.Asio事件循环自然序列化操作，无需互斥锁
+### 2. 连接与状态管理
 
-#### SQLite数据库 (`src/sqlite_db.*`)
-- ✅ 每个目录独立的index.db数据库
-- ✅ photos表：(filename TEXT PRIMARY KEY, crc32 INTEGER)
-- ✅ 支持查询、插入/更新、删除文件CRC记录
+#### 连接管理器 (`src/con_mgr.*`)
+- ✅ 生成连接 ID，维护连接表
+- ✅ 保存客户端地址与同步进度
+- ✅ 将连接信息转换为 JSON 输出（基于 `proto/http.proto`）
+
+#### 服务容器 (`src/service_container.*`)
+- ✅ 统一管理 `CConMgr` 与 `SqliteDBManager` 单例实例
+
+### 3. 数据存储模块
+
+#### SQLite 数据库连接管理器 (`src/sqlite_db_manager.*`)
+- ✅ 集中管理 SQLite 连接，按 `index.db` 路径缓存
+- ✅ 引用计数机制：Session 创建时递增，销毁时递减，计数为 0 自动关闭
+- ✅ 便利方法：`get_file_crc()` / `set_file_crc()` / `delete_file()`
+
+#### SQLite 数据库 (`src/sqlite_db.*`)
+- ✅ 每个目录独立的 `index.db` 数据库
+- ✅ `photos` 表结构：`(filename TEXT PRIMARY KEY, crc32 INTEGER)`
+- ✅ 支持查询、插入/更新、删除文件 CRC 记录
 - ✅ 自动创建表结构
 
-#### CRC32计算 (`src/crc.*`)
-- ✅ 预计算CRC32查找表
-- ✅ 支持字节数组CRC计算
-- ✅ 支持文件CRC计算
-- ✅ 用于分片数据校验和文件去重
+#### CRC32 计算 (`src/crc.*`)
+- ✅ 预计算 CRC32 查找表
+- ✅ 支持字节数组与文件 CRC 计算
+- ✅ 用于文件去重与完整性校验
 
-### 3. 工具模块
+### 4. 配置与工具
 
-#### 配置管理 (`src/config.hpp`)
-- ✅ 从环境变量读取配置
-- ✅ 提供默认值
-- ✅ 支持的配置项：
-  - LPS_TCP_PORT (默认: 9000)
-  - LPS_UDP_PORT (默认: 9001)
-  - LPS_NAME (默认: LPS-Server)
-  - LPS_ROOT (默认: ./data)
-  - LPS_OS (默认: linux)
-  - LPS_BROADCAST (默认: 255.255.255.255)
+#### 配置管理 (`src/config.hpp` + gflags)
+- ✅ 支持环境变量与默认值：
+   - `LPS_TCP_PORT` (默认: 9176)
+   - `LPS_UDP_PORT` (默认: 9176)
+   - `LPS_HTTP_PORT` (默认: 9175)
+   - `LPS_NAME` (默认: LPS-Server)
+   - `LPS_ROOT` (默认: ./data)
+   - `LPS_OS` (默认: linux)
+   - `LPS_BROADCAST` (默认: 255.255.255.255)
+- ✅ 命令行参数覆盖：`--tcp_port` / `--udp_port` / `--http_port` / `--root`
 
-#### 帧协议 (`src/framing.hpp`)
-- ✅ 大端字节序的4字节长度编解码
-- ✅ 精确读取指定长度数据的工具函数
-
-### 4. Protobuf协议
+### 5. Protobuf 协议
 
 #### 消息定义 (`proto/csmsg.proto`)
-- ✅ MsgPkg包装消息，包含ResultID、SerialID
-- ✅ CSNtyServerInfo - 服务器广播信息
-- ✅ CSReqDeviceInfo/CSResDeviceInfo - 设备注册
-- ✅ CSReqSyncPhoto/CSResSyncPhoto - 照片同步
+- ✅ `MsgPkg` 包装消息，包含 `ResultID`、`SerialID`
+- ✅ `CSNtyServerInfo` - 服务器广播信息
+- ✅ `CSReqDeviceInfo`/`CSResDeviceInfo` - 设备注册
+- ✅ `CSReqSyncPhoto`/`CSResSyncPhoto` - 照片同步
 
-#### 消息ID生成 (`proto/msgid.proto`, `proto/gen_msgid.py`)
-- ✅ 自动从csmsg.proto提取消息类型
-- ✅ 生成MSGID枚举定义
-- ✅ Python脚本自动化生成
+#### HTTP 数据结构 (`proto/http.proto`)
+- ✅ `HttpGetClient` 用于 `/clients` 的 JSON 响应
 
-### 5. 构建系统
+#### 消息 ID 生成 (`proto/msgid.proto`, `proto/gen_msgid.py`)
+- ✅ 自动从 `csmsg.proto` 提取消息类型
+- ✅ 生成 `MSGID` 枚举定义
 
-#### CMake配置 (`CMakeLists.txt`)
-- ✅ C++17标准
-- ✅ 自动查找依赖库（Boost, Protobuf, SQLite3, zlib）
-- ✅ 自动生成Protobuf C++代码
-- ✅ 包含所有源文件和头文件
-- ✅ 正确链接所有依赖库
+### 6. 构建系统
+
+#### CMake 配置 (`CMakeLists.txt`)
+- ✅ C++20 标准
+- ✅ 自动查找依赖库（Boost、Protobuf、SQLite3、Zlib、gflags）
+- ✅ macOS 额外依赖 `absl`（日志/字符串工具）
+- ✅ 自动生成 Protobuf C++ 代码
+- ✅ 可选构建单元测试（`ENABLE_TESTS`）
 
 #### 构建脚本 (`build.sh`, `proto/gen.sh`)
-- ✅ 自动生成msgid.proto
-- ✅ 创建构建目录
-- ✅ 执行CMake配置和编译
+- ✅ 自动生成 `msgid.proto`
+- ✅ 创建构建目录并执行 CMake + 编译
 - ✅ 支持并行编译
 
 ## 文件清单
 
-### 新增/完善的文件
+### 主要源代码
+- `src/main.cpp` - 进程入口，创建 TCP/UDP/HTTP 服务器并启动
+- `src/session.cpp` - TCP 会话逻辑与文件分片写入
+- `src/tcp_server.cpp` - TCP 监听与连接接受
+- `src/udp_broadcaster.cpp` - UDP 每秒广播服务
+- `src/http_server.cpp` / `src/http_session.cpp` - HTTP 服务与路由
+- `src/con_mgr.cpp` - 连接与同步进度管理
+- `src/service_container.cpp` - 服务容器
+- `src/sqlite_db.cpp` / `src/sqlite_db_manager.cpp` - SQLite 访问与连接管理
+- `src/crc.cpp` - CRC32 工具
 
-1. **源代码文件**
-   - `src/sqlite_db_manager.cpp` (95行) - SQLite数据库连接管理器实现
-   - `src/session.cpp` (325行) - Session会话实现（已更新使用Manager）
-   - `src/service_container.cpp` (23行) - 服务容器实现（已添加DBManager）
-   - `src/tcp_server.cpp` (50行) - TCP服务器实现（已更新传递Manager）
-   - `src/udp_broadcaster.cpp` (78行) - UDP广播器实现
-
-2. **头文件**（已存在或新增）
-   - `src/sqlite_db_manager.hpp` - SQLite连接管理器接口定义
-   - `src/session.hpp` - Session接口定义（已更新）
-   - `src/service_container.hpp` - 服务容器接口（已更新）
-   - `src/tcp_server.hpp` - TCP服务器接口
-   - `src/udp_broadcaster.hpp` - UDP广播器接口
-   - `src/config.hpp` - 配置管理
-   - `src/framing.hpp` - 帧协议工具
-   - `src/crc.hpp` - CRC32工具
-   - `src/sqlite_db.hpp` - SQLite访问接口
-
-3. **已实现的文件**（已存在）
-   - `src/crc.cpp` - CRC32实现
-   - `src/sqlite_db.cpp` - SQLite实现
-   - `src/main.cpp` - 主程序（已添加CRC初始化）
-
-4. **协议文件**
-   - `proto/csmsg.proto` - 主协议定义
-   - `proto/msgid.proto` - 自动生成的消息ID（已生成）
-   - `proto/gen_msgid.py` - 生成脚本
-   - `proto/gen.sh` - 协议生成脚本（已修正为C++）
-
-5. **构建文件**
-   - `CMakeLists.txt` - CMake配置（已更新）
-   - `build.sh` - 构建脚本（已修正）
-
-6. **文档文件**
-   - `README.md` - 项目说明（原有）
-   - `INSTALL.md` - 安装指南（新增）
-   - `IMPLEMENTATION_SUMMARY.md` - 实现总结（本文件）
+### 头文件与协议
+- `proto/csmsg.proto` / `proto/http.proto` / `proto/msgid.proto`
+- `proto/gen_msgid.py` / `proto/gen.sh`
+- `proto/cmd.h` - 自定义包头协议定义
+- `src/config.hpp` - 配置结构
 
 ## 代码特点
 
 ### 1. 模块化设计
-- 每个功能模块独立文件
-- 清晰的职责分离
-- 易于测试和维护
+- 网络、会话、存储、HTTP 与工具模块解耦
+- 目录级 SQLite 数据库，方便隔离与扩展
 
-### 2. 异步I/O
-- 基于Boost.Asio的异步模型
-- 非阻塞网络操作
-- 支持高并发
+### 2. 异步 I/O
+- 基于 Boost.Asio/Beast 的非阻塞模型
+- TCP 与 HTTP 并行处理
 
 ### 3. 健壮性
-- 完整的错误处理
-- 消息长度校验（防止过大消息）
-- CRC校验确保数据完整性
-- 自动创建目录和数据库
+- 包头校验与消息长度限制
+- 自动创建目录与数据库
+- 统一会话关闭与资源释放
 
 ### 4. 性能优化
-- 文件CRC去重，避免重复写入
+- 文件 CRC 去重避免重复写入
 - 分片上传支持大文件
-- SQLite索引加速查询
-- 预计算CRC32表
+- 预计算 CRC32 表提升校验性能
 
 ## 核心实现逻辑
 
 ### 1. 服务器启动流程
 ```
-main() 
-  → 初始化CRC32表
-  → 创建io_context
-  → 加载配置
-  → 创建TcpServer
-  → 创建UdpBroadcaster
-  → 启动UDP广播
-  → 启动TCP监听
-  → 运行io_context
+main()
+   → 解析 gflags 参数
+   → 初始化 CRC32 表
+   → 创建 io_context
+   → 创建 TcpServer / UdpBroadcaster / HttpServer
+   → 启动 UDP 广播
+   → 启动 TCP/HTTP 监听
+   → 运行 io_context
 ```
 
-### 2. 客户端连接流程
+### 2. TCP 客户端连接流程
 ```
 客户端连接
-  → TcpServer接受连接
-  → 创建Session
-  → Session.start()
-  → 读取消息长度（4字节）
-  → 读取消息体
-  → 解析Protobuf
-  → 分发到对应处理器
+   → TcpServer 接受连接
+   → 创建 Session
+   → 读取包头（24 字节 PkgHead）
+   → 按 PackageLen 读取消息体
+   → 解析 MsgPkg
+   → 分发到对应处理器
 ```
 
 ### 3. 设备注册流程
 ```
-收到CSReqDeviceInfo
-  → 提取DeviceID和Path
-  → 构建完整路径 (ROOT/Path)
-  → 创建目录
-  → 打开/创建 index.db
-  → 返回CSResDeviceInfo
+收到 CSReqDeviceInfo
+   → 提取 DeviceID 与 Path（移除前导 /）
+   → 构建完整路径 (ROOT/Path)
+   → 创建目录
+   → 打开/创建 index.db
+   → 返回 CSResDeviceInfo
 ```
 
 ### 4. 照片同步流程
 ```
-收到CSReqSyncPhoto
-  → 校验设备是否已注册
-  → 验证分片CRC32
-  → 如果是完整单包且CRC一致 → 跳过
-  → 打开文件（追加或新建）
-  → 写入数据到指定偏移
-  → 如果是最后一片：
-    → 计算整文件CRC32
-    → 更新数据库
-  → 返回CSResSyncPhoto
+收到 CSReqSyncPhoto
+   → 校验设备是否已注册
+   → 生成文件路径并按 Offset 写入
+   → Offset == 0 且 CRC 一致 → 跳过写入
+   → 最后一片写入后计算整文件 CRC
+   → 更新数据库并返回 CSResSyncPhoto
+```
+
+### 5. HTTP 查询流程
+```
+GET /clients
+   → 从连接管理器读取连接与进度
+   → 返回 JSON
 ```
 
 ## 技术亮点
 
-1. **智能去重**：单包完整文件且CRC一致时直接返回成功，不写入磁盘
-2. **分片支持**：支持大文件分片传输，适应各种网络环境
-3. **CRC双重校验**：分片级和文件级CRC，确保数据完整性
+1. **智能去重**：首片 CRC 与数据库一致时直接返回成功
+2. **分片支持**：支持大文件分片传输
+3. **状态可视化**：HTTP `/clients` 输出实时连接与进度
 4. **自动化目录管理**：自动创建多级目录和数据库
-5. **可配置性**：所有关键参数通过环境变量配置
-6. **跨平台**：支持Linux和macOS
+5. **可配置性**：环境变量与 gflags 结合
+6. **跨平台**：支持 Linux、macOS 与 Windows（含 vcpkg 配置）
 
 ## 编译要求
 
 - CMake ≥ 3.15
-- C++17编译器（GCC 7+, Clang 5+）
-- Boost（system模块）
-- Protobuf
+- C++20 编译器（GCC/Clang/MSVC）
+- Boost（filesystem/system/beast）
+- Protobuf（protoc + libprotobuf）
 - SQLite3
-- zlib
-- Python 3.x
+- Zlib
+- gflags
+- macOS 需要 absl（由 CMake 查找）
+- Python 3.x（生成 `msgid.proto`）
 
 ## 下一步可扩展方向
 
 1. **安全性**
-   - TLS/SSL加密
-   - 客户端鉴权
-   - 访问控制列表
+    - TLS/SSL 加密
+    - 客户端鉴权
+    - 访问控制列表
 
 2. **可靠性**
-   - 断点续传token
-   - 更强的哈希算法（SHA256）
-   - 文件写入锁
+    - 断点续传 token
+    - 更强的哈希算法（SHA256）
+    - 文件写入锁
 
 3. **性能**
-   - 写入队列优化
-   - 并发控制
-   - 内存池管理
+    - 写入队列优化
+    - 并发控制
+    - 内存池管理
 
 4. **监控**
-   - Prometheus指标
-   - 日志分级
-   - 性能统计
+    - Prometheus 指标
+    - 日志分级
+    - 性能统计
 
 ## 测试状态
 
-- ✅ 代码编译检查通过
-- ✅ msgid.proto自动生成成功
-- ⚠️ 需要安装依赖库后进行完整构建测试
-- ⚠️ 需要进行功能测试和集成测试
+- ⚠️ 单元测试已在 `tests/` 中配置（`ENABLE_TESTS`），尚未执行
+- ⚠️ 依赖库安装后建议进行完整构建与集成测试
 
 ## 总结
 
-本项目已完成所有核心功能的实现，代码结构清晰，符合工程化最佳实践。所有模块都已实现并整合，具备完整的网络通信、数据存储、CRC校验等功能。项目可以在安装必要依赖后进行编译和运行。
+项目已具备完整的 UDP 广播、TCP 同步、SQLite 存储与 HTTP 状态查询能力，代码结构清晰、模块化良好，可在安装依赖后直接构建运行。
